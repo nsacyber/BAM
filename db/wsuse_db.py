@@ -127,10 +127,10 @@ def dbentryexist(dbcursor, dbname, sha256, sha512):
     check = dbcursor.fetchone()
 
     if check is None:
-        dbgmsg("did not find " + sha256 + " entry in " + dbname)
+        dbgmsg("[WSUS_DB] did not find " + sha256 + " entry in " + dbname)
         return False
 
-    dbgmsg("found " + sha256 + "entry in DB")
+    dbgmsg("[WSUS_DB] found " + sha256 + "entry in DB")
     return True
 
 def dbentryexistwithsymbols(dbcursor, dbname, sha256, sha512):
@@ -145,13 +145,13 @@ def dbentryexistwithsymbols(dbcursor, dbname, sha256, sha512):
     check = dbcursor.fetchone()
 
     if check is None:
-        dbgmsg("did not find " + sha256 + " entry in " + dbname)
+        dbgmsg("[WSUS_DB] did not find " + sha256 + " entry in " + dbname)
         return False
 
     if check["SymbolObtained"] == 0:
         return False
 
-    dbgmsg("found " + sha256 + "entry with symbols obtained in DB")
+    dbgmsg("[WSUS_DB] found " + sha256 + "entry with symbols obtained in DB")
     return True
 
 def symbolentryexist(dbcursor, dbname, signature, sha256, sha512):
@@ -170,10 +170,10 @@ def symbolentryexist(dbcursor, dbname, signature, sha256, sha512):
     check = dbcursor.fetchone()
 
     if check is None:
-        dbgmsg("did not find " + signature + " entry in " + dbname)
+        dbgmsg("[WSUS_DB] did not find " + signature + " entry in " + dbname)
         return False
 
-    dbgmsg("found " + signature + "entry in DB")
+    dbgmsg("[WSUS_DB] found " + signature + "entry in DB")
     return True
 
 def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
@@ -192,7 +192,7 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
             "PdbDbiAge|Date:)", wholeline):
             hexi = True
     except IndexError as ierror:
-        dbgmsg("{-} Parsing symchk output part 1: " + str(ierror) + " on " + wholeline)
+        dbgmsg("[WSUS_DB] {-} Parsing symchk output part 1: " + str(ierror) + " on " + wholeline)
         return result
 
     if locate in wholeline:
@@ -206,7 +206,7 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
             if re.search(r"^\[SYMCHK\] Age:", wholeline):
                 hexi = True
         except IndexError as ierror:
-            dbgmsg("{-} Parsing symchk output part 2: " + str(ierror) + " on " + wholeline)
+            dbgmsg("[WSUS_DB] {-} Parsing symchk output part 2: " + str(ierror) + " on " + wholeline)
             return None
 
         if "CV:" in wholeline:
@@ -217,13 +217,13 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
             try:
                 result = int(result)
             except ValueError as verror:
-                dbgmsg("{-} Caught: Converting " + str(result) + " from " + str(wholeline) +
+                dbgmsg("[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
                        " to an int. " + str(verror))
         elif hexi:
             try:
                 result = int(result, 16)
             except ValueError as verror:
-                dbgmsg("{-} Caught: Converting " + str(result) + " from " + str(wholeline) +
+                dbgmsg("[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
                        " to an int. " + str(verror))
 
     return result
@@ -257,7 +257,7 @@ def writeupdate(file, sha256, sha512, \
     packagetype = Path(file).suffix
     basename = os.path.basename(file)
     dbcursor = conn.cursor()
-    dbgmsg("is inserting new file and hash to updateDB")
+    dbgmsg("[WSUS_DB] is inserting new file and hash to updateDB")
 
     dbcursor.execute(
         "INSERT INTO " + dbname + " VALUES (" + "?," * 38 + "?)",
@@ -312,10 +312,10 @@ def writebinary(file, sha256, sha512,  \
     try:
         unpefile = pefile.PE(file)
     except pefile.PEFormatError as peerror:
-        dbgmsg("skipping due to exception: " + peerror.value)
+        dbgmsg("[WSUS_DB] skipping due to exception: " + peerror.value)
         return False
 
-    dbgmsg("!! Working on " + str(file))
+    dbgmsg("[WSUS_DB] !! Working on " + str(file))
     fileext, stype = pebinarytype(unpefile)
     arch = getpearch(unpefile)
     signature = getpesigwoage(unpefile)
@@ -397,7 +397,7 @@ def writebinary(file, sha256, sha512,  \
                                     versionfields["SpecialBuild"] \
                                         = dvalue
 
-    dbgmsg(str(versionfields))
+    dbgmsg("[WSUS_DB] " + str(versionfields))
 
     # if this is a Microsoft binary the Product version is typically
     # the os version it was built for, but other products this is not
@@ -410,7 +410,7 @@ def writebinary(file, sha256, sha512,  \
 
     dbcursor = conn.cursor()
 
-    dbgmsg("inserting new file and hash")
+    dbgmsg("[WSUS_DB] inserting new file and hash")
     dbcursor.execute(
         "INSERT INTO " + dbname + " VALUES (" + "?," * 31 + "?)",
         # FileName,OperatingSystemVersion,Architecture,Signature,SHA256
@@ -458,7 +458,7 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, \
     try:
         unpefile = pefile.PE(file)
     except pefile.PEFormatError as peerror:
-        dbgmsg("Caught: PE error " + str(peerror) + ". File: " + file)
+        dbgmsg("[WSUS_DB] Caught: PE error " + str(peerror) + ". File: " + file)
         return False
 
     arch = getpearch(unpefile)
@@ -506,7 +506,7 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, \
                 elif re.search("private", symcontains):
                     private = True
         except IndexError as ierror:
-            dbgmsg("{-} Parsing symchk output DBGHELP: " + str(ierror) + " on " + file)
+            dbgmsg("[WSUS_DB] {-} Parsing symchk output DBGHELP: " + str(ierror) + " on " + file)
             continue
 
         for field in symchkarr:
@@ -532,7 +532,7 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, \
             elif symchkarr["PDB Sig:"] != '':
                 signature = symchkarr["PDB Sig:"]
     except IndexError as ierror:
-        dbgmsg("{-} Parsing symchk output IGNORED: " + str(ierror) + " on " + file)
+        dbgmsg("[WSUS_DB] {-} Parsing symchk output IGNORED: " + str(ierror) + " on " + file)
         return False
 
     if symchkarr["SymType:"] == "SymNone":
@@ -540,7 +540,7 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, \
     else:
         source = symchkerr[-1]
 
-    dbgmsg("is inserting new file and hash to symbolDB")
+    dbgmsg("[WSUS_DB] is inserting new file and hash to symbolDB")
 
     symbolobtained = int(False)
 

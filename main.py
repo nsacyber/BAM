@@ -147,9 +147,9 @@ def checkdirectoryexist(direxist):
             os.mkdir(direxist)
             result = True
         except FileExistsError as ferror:
-            dbgmsg("{-} unable to make symbol destination directory " + \
+            dbgmsg("[MAIN] {-} unable to make symbol destination directory " + \
                     str(ferror.winerror) + " " +  str(ferror.strerror))
-    dbgmsg("Directory ("+ direxist + ") results were " + str(int(result)))
+    dbgmsg("[MAIN] Directory ("+ direxist + ") results were " + str(int(result)))
     return result
 
 if __name__ == "__main__":
@@ -187,7 +187,7 @@ if __name__ == "__main__":
             checkdirectoryexist(ARGS.symdestpath)
 
         if not construct_tables(globs.DBCONN):
-            dbgmsg("Problem creating DB tables")
+            dbgmsg("[MAIN] Problem creating DB tables")
             globs.DBCONN.close()
             exit()
 
@@ -251,7 +251,7 @@ if __name__ == "__main__":
         # Only create the SymbolFiles Table
         if ARGS.getsymbols:
             if not construct_tables(globs.DBCONN):
-                dbgmsg("Problem creating DB tables")
+                dbgmsg("[MAIN] Problem creating DB tables")
                 globs.DBCONN.close()
                 exit()
 
@@ -285,7 +285,7 @@ if __name__ == "__main__":
         # Only create the PatchedFiles Table
         elif ARGS.getpatches:
             if not construct_tables(globs.DBCONN):
-                dbgmsg("Problem creating DB tables")
+                dbgmsg("[MAIN] Problem creating DB tables")
                 globs.DBCONN.close()
                 exit()
 
@@ -316,7 +316,7 @@ if __name__ == "__main__":
         # Only create the UpdateFiles Table
         elif ARGS.getupdates:
             if not construct_tables(globs.DBCONN):
-                dbgmsg("Problem creating DB tables")
+                dbgmsg("[MAIN] Problem creating DB tables")
                 globs.DBCONN.close()
                 exit()
 

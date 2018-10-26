@@ -207,15 +207,7 @@ def getpepdbfilename(unknownpefile):
                 if attrpdbfilename is None:
                     return pdbfilename
 
-
-                try:
-                    pdbfilename = attrpdbfilename.decode('ascii')
-                except UnicodeDecodeError as decodeerr:
-                    try:
-                        pdbfilename = attrpdbfilename.decode('utf16', "replace")
-                    except UnicodeDecodeError as decodeerr:
-                        pass
-
+                pdbfilename = attrpdbfilename.decode('ascii')
                 try:
                     pdbfilename = pdbfilename[:pdbfilename.index('\x00')]
                 except ValueError as dummy:

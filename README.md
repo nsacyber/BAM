@@ -1,4 +1,4 @@
-"You just throw it in and BAM! it works!"
+"You just throw it in and BAM! It works!"
 
 BAM! (Binary Analysis Metadata!) provides the user the ability to collection information on Windows Updates, 
 updated files (i.e., PE files), and symbol files. 
@@ -68,10 +68,6 @@ Populate Symbol table in DB only (initially or continue use):
 
 
 
-Knowledge base article describing how to extract .msu files and automate
-installing them
-- https://blogs.msdn.microsoft.com/astebner/2008/03/11/knowledge-base-article-
-    describing-how-to-extract-msu-files-and-automate-installing-them/
 
 
 

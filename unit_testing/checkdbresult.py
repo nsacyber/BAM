@@ -208,7 +208,7 @@ try:
               "{} ({}) were obtained.".format(FILENAME, SIGNATURE))
         print("........")
         CURSOR.execute("SELECT * FROM SymbolFiles " +
-                       "WHERE Signature = '" + SIGNATURE + "' LIMIT 1") # same PE can be in many updates
+                       "WHERE Signature = '" + SIGNATURE + "'")
         for row in CURSOR.fetchall():
             for column in row.keys():
                 print(column + " --> ", end='')
@@ -238,7 +238,7 @@ try:
               "{}, {}".format(FILENAME, SIGNATURE))
         print("........")
         CURSOR.execute("SELECT * FROM PatchedFiles "
-                       "WHERE Signature = '" + SIGNATURE + "' LIMIT 1") # same PE can be in many updates
+                       "WHERE Signature = '" + SIGNATURE + "'")
         for row in CURSOR.fetchall():
             for column in row.keys():
                 print(column + " --> ", end='')
@@ -299,7 +299,7 @@ try:
 
     header("Find 1 PE file without debugging information", COUNT)
     CURSOR.execute("SELECT * FROM PatchedFiles "
-                   "WHERE Ignored != 1 AND StrippedPE = 1 LIMIT 2")
+                   "WHERE Ignored != 1 AND StrippedPE = 1")
     for row in CURSOR.fetchall():
         for column in row.keys():
             print(column + " --> " + str(row[column]))
