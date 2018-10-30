@@ -30,6 +30,7 @@ Dependencieis:
     pefile
 * SQLite
 * Windows Server Update Services (WSUS)
+* Windows Debugging Tools (found in Windows SDK)
 
 * Windows RSAT
 * 8GB of RAM (arbitrary minimal)

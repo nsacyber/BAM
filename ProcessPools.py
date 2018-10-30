@@ -28,7 +28,10 @@ import globs
 from db import wsuse_db
 
 from support.utils import dbgmsg, validatecab, ispe, validatezip, \
-    getfilehashes, ispebuiltwithdebug
+    getfilehashes, ispebuiltwithdebug, pebinarytype, getpepdbfilename, \
+    getpeage, getpearch, getpesigwoage, ispedbgstripped
+
+from dependencies.pefile import pefile
 
 #****************************************************
 # Classes
@@ -88,7 +91,7 @@ class ExtractMgr(threading.Thread):
                 if ncabdir in job[0][0]:
                     dbgmsg("[EXMGR] found nested cab, not adding to database")
                 else:
-                    self.dbc.addtask("update", job[0], job[1], job[2])
+                    self.dbc.addtask("update", job[0], job[1], job[2], None)
 
                 if self.cleaner is not None:
                     self.cleaner.receivejobset(job[0][0])
@@ -198,7 +201,7 @@ class ExtractMgr(threading.Thread):
         dbgmsg("[EXMGR] Listing " + str(src) + " CAB contents")
         try:
             result = subprocess.check_output(
-                ["tools\\x64\\expand.exe", "-D", src], shell=False)
+                ["expand.exe", "-D", src], shell=False)
         except subprocess.CalledProcessError as error:
             dbgmsg("[EXMGR] {-} Listing contents of " + src +
                    " failed with " + str(error.returncode) + " " +  \
@@ -215,7 +218,7 @@ class ExtractMgr(threading.Thread):
         try:
             dbgmsg("[EXMGR] extracting " + extstr + " at " + newdir)
             result = subprocess.check_output(
-                ["tools\\x64\\expand.exe", "-R",
+                ["expand", "-R",
                  src, "-F:" + extstr, newdir], shell=False)
             dbgmsg("[EXMGR] extracted " + extstr + " at " + newdir)
         except subprocess.CalledProcessError as error:
@@ -489,7 +492,95 @@ class CleanMgr(threading.Thread):
                     # in the DBG file options.
                     self.symmgr.receivejobset(str(result[0][0]))
                     dbgmsg("[CLNMGR] items passed to symmgr: " + str(result[0][0]))
-                self.dbc.addtask("binary", result[0], result[1], result[2])
+                # set up infolist to pass to DBMgr
+                infolist = {
+                    'OriginalFilename': '', 'FileDescription': '', 'ProductName': '',
+                    'Comments': '', 'CompanyName': '', 'FileVersion': '',
+                    'ProductVersion': '', 'IsDebug': '', 'IsPatched': '',
+                    'IsPreReleased': '', 'IsPrivateBuild': '', 'IsSpecialBuild': '',
+                    'Language': '', 'PrivateBuild': '', 'SpecialBuild': ''
+                    }
+
+                try:
+                    unpefile = pefile.PE(result[0][0])
+                except pefile.PEFormatError as peerror:
+                    dbgmsg("[WSUS_DB] skipping due to exception: " + peerror.value)
+                    return False
+
+                infolist['fileext'], infolist['stype'] = pebinarytype(unpefile)
+                infolist['arch'] = getpearch(unpefile)
+                infolist['signature'] = getpesigwoage(unpefile)
+                infolist['age'] = getpeage(unpefile)
+                infolist['pdbfilename'] = getpepdbfilename(unpefile)
+                infolist['strippedpe'] = ispedbgstripped(result[0][0])
+                infolist['builtwithdbginfo'] = ispebuiltwithdebug(result[0][0])
+
+                versioninfo = getattr(unpefile, "VS_VERSIONINFO", None)
+                if versioninfo is not None:
+                    fileinfo = getattr(unpefile, "FileInfo", None)
+                    if fileinfo is not None:
+                        for fileentry in unpefile.FileInfo:
+                            stringtable = getattr(fileentry, "StringTable", None)
+                            if stringtable is not None:
+                                for strtable in fileentry.StringTable:
+                                    # Currently only handling unicode en-us
+                                    if strtable.LangID[:4] == b'0409' or \
+                                            (strtable.LangID[:4] == b'0000' and
+                                            (strtable.LangID[4:] == b'04b0' or
+                                            strtable.LangID[4:] == b'04B0')):
+                                        infolist["Language"] \
+                                            = strtable.LangID.decode("utf-8")
+                                        for field, value in strtable.entries.items():
+                                            dfield = field.decode('utf-8')
+                                            dvalue = value.decode('utf-8')
+                                            if dfield == "OriginalFilename":
+                                                infolist["OriginalFilename"] \
+                                                    = dvalue
+                                            if dfield == "FileDescription":
+                                                infolist["FileDescription"] \
+                                                    = dvalue
+                                            if dfield == "ProductName":
+                                                infolist["ProductName"] \
+                                                    = dvalue
+                                            if dfield == "Comments":
+                                                infolist["Comments"] \
+                                                    = dvalue
+                                            if dfield == "CompanyName":
+                                                infolist["CompanyName"] \
+                                                    = dvalue
+                                            if dfield == "FileVersion":
+                                                infolist["FileVersion"] \
+                                                    = dvalue
+                                            if dfield == "ProductVersion":
+                                                infolist["ProductVersion"] \
+                                                    = dvalue
+                                            if dfield == "IsDebug":
+                                                infolist["IsDebug"] \
+                                                    = dvalue
+                                            if dfield == "IsPatched":
+                                                infolist["IsPatched"] \
+                                                    = dvalue
+                                            if dfield == "IsPreReleased":
+                                                infolist["IsPreReleased"] \
+                                                    = dvalue
+                                            if dfield == "IsPrivateBuild":
+                                                infolist["IsPrivateBuild"] \
+                                                    = dvalue
+                                            if dfield == "IsSpecialBuild":
+                                                infolist["IsSpecialBuild"] \
+                                                    = dvalue
+                                            if dfield == "PrivateBuild":
+                                                infolist["PrivateBuild"] \
+                                                    = dvalue
+                                            if dfield == "SpecialBuild":
+                                                infolist["SpecialBuild"] \
+                                                    = dvalue
+                if infolist['ProductName'].find("Operating System") != -1:
+                    infolist['osver'] = "NT" + infolist['ProductVersion']
+                else:
+                    infolist['osver'] = "UNKNOWN"
+
+                self.dbc.addtask("binary", result[0], result[1], result[2], infolist)
 
     def run(self):
         '''
@@ -620,7 +711,18 @@ class SymMgr(threading.Thread):
         else:
             results = future.result()
             if results is not None:
-                self.dbc.addtask("symbol", results[0], results[1], results[2])
+                infolist = {}
+
+                try:
+                    unpefile = pefile.PE(results[0][0])
+                except pefile.PEFormatError as peerror:
+                    dbgmsg("[WSUS_DB] Caught: PE error " + str(peerror) + ". File: " + results[0][0])
+                    return False
+
+                infolist['signature'] = getpesigwoage(unpefile)
+                infolist['arch'] = getpearch(unpefile)
+
+                self.dbc.addtask("symbol", results[0], results[1], results[2], infolist)
             else:
                 dbgmsg("[SYMMGR] no symbols found")
 
@@ -680,8 +782,7 @@ class SymMgr(threading.Thread):
         else:
             servers = "u \"srv*" + symdest + "*" + symserver +"\""
 
-        args = (".\\tools\\x64\\symchk.exe /v \"" +
-                str(jobfile) + "\" /s" + servers + " /od")
+        args = ("symchk.exe /v \"" + str(jobfile) + "\" /s" + servers + " /od")
 
         with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE) \
                 as psymchk:
@@ -719,12 +820,12 @@ class DBMgr(threading.Thread):
         self.donecount = 0
         self.dbrecordscnt = 0
 
-    def addtask(self, optype, jobtuple, sha256, sha512):
+    def addtask(self, optype, jobtuple, sha256, sha512, infolist):
         '''
         takes results generated from other Mgrs and creates a task which is placed
         in the Queue
         '''
-        task = (optype, jobtuple, sha256, sha512)
+        task = (optype, jobtuple, sha256, sha512, infolist)
         self.jobqueue.put(task)
         dbgmsg("[DBMGR] " + optype + " task added to queue. Queue at " + \
                str(self.jobqueue.qsize()) + " tasks.")
@@ -738,22 +839,22 @@ class DBMgr(threading.Thread):
         dbgmsg("[DBMGR] writing update for (" + str(file) + ")")
         wsuse_db.writeupdate(file, sha256, sha512, conn=self.dbconn)
 
-    def writebinary(self, file, sha256, sha512):
+    def writebinary(self, file, sha256, sha512, infolist):
         '''
         performs write updates to db for Binary files
         should use function in wsuse_db
         '''
         dbgmsg("[DBMGR] writing binary for (" + str(file) + ")")
-        wsuse_db.writebinary(file, sha256, sha512, conn=self.dbconn)
+        wsuse_db.writebinary(file, sha256, sha512, infolist, conn=self.dbconn)
 
-    def writesym(self, file, symchkerr, symchkout, sha256, sha512):
+    def writesym(self, file, symchkerr, symchkout, sha256, sha512, infolist):
         '''
         performs write updates to db for Symbol Files
         should use function in wsuse_db
         '''
         dbgmsg("[DBMGR] writing symbol for (" + str(file) + ")")
 
-        wsuse_db.writesymbol(file, symchkerr, symchkout, sha256, sha512, conn=self.dbconn)
+        wsuse_db.writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, conn=self.dbconn)
 
     def donesig(self):
         '''
@@ -800,10 +901,10 @@ class DBMgr(threading.Thread):
                     self.writeupdate(task[1][0], task[2], task[3])
                 elif task[0] == "binary":
                     self.dbrecordscnt += 1
-                    self.writebinary(task[1][0], task[2], task[3])
+                    self.writebinary(task[1][0], task[2], task[3], task[4])
                 elif task[0] == "symbol":
                     self.dbrecordscnt += 1
-                    self.writesym(task[1][0], task[1][1], task[1][2], task[2], task[3])
+                    self.writesym(task[1][0], task[1][1], task[1][2], task[2], task[3], task[4])
                 else:
                     dbgmsg("[DBMGR] task unrecognized")
 
