@@ -54,22 +54,12 @@ def construct_tables(db_conn):
         # Construct the UpdateFiles Table
         dbcursor.execute(
             "CREATE TABLE IF NOT EXISTS UpdateFiles " +
-            "(FileName text, OperatingSystemVersion text, " +
-            "Architecture text, Signature text, SHA256 text, SHA512 text, " +
-            "CreationDate text, ModifiedDate text, " +
-            "CategoryTypeCompany text, CategoryTypeProduct text, " +
-            "CategoryTypeProductFamily text, " +
-            "CategoryTypeUpdateClassification text, PackageType text, " +
-            "Extracted integer, SymbolsObtained integer, IsSeceded integer, " +
-            "SecededBy text, Language1 text, UpdateId text, " +
-            "RevisionNumber integer, RevisionId integer, IsLeaf integer, " +
-            "DiskPath text, FileId text, " +
-            "OriginalFilename text, FileDescription text, ProductName text, " +
-            "Comments text, CompanyName text, FileVersion text, " +
-            "ProductVersion text, IsDebug integer, IsPatched integer, " +
-            "IsPreReleased integer, IsPrivate integer, " +
-            "IsSpecialBuild integer, PrivateBuild text, " +
-            "SpecialBuild text, InsertionTime text);")
+            "(FileName text, " +
+            "SHA256 text, SHA512 text, " +
+            "Extracted integer, SymbolsObtained integer, WasSeceded integer, " +
+            "SecededBy text, " +
+            "DiskPath text, " +
+            "InsertionTime text);")
 
         # Construct the SymbolFiles Table
         dbcursor.execute(
@@ -254,32 +244,24 @@ def writeupdate(file, sha256, sha512, \
     '''
     from time import time
 
-    packagetype = Path(file).suffix
     basename = os.path.basename(file)
     dbcursor = conn.cursor()
     dbgmsg("[WSUS_DB] is inserting new file and hash to updateDB")
 
     dbcursor.execute(
-        "INSERT INTO " + dbname + " VALUES (" + "?," * 38 + "?)",
-        # FileName, OperatingSystemVersion, Architecture, GUID, SHA256
-        (basename, None, None, None, sha256,
-         # SHA512, CreationDate, ModifiedDate, CategoryTypeCompnay
-         # CategoryTypeProduct,
-         sha512, None, None, None, None,
-         # CategoryTypeProductFamily, CategoryTypeUpdateClassification,
-         # PackageType, Extracted, SymbolsObtained
-         None, None, packagetype, 0, 0,
-         # IsSeceded, SecededBy, Language1, UpdateId, RevisionNumber
-         0, None, None, None, None,
-         # RevisionId, IsLeaf, DiskPath, FileId, OriginalFilename
-         None, None, str(file), None, None,
-         # FileDescritpion, ProductName, Comments, CompanyName,
-         # FileVersion
-         None, None, None, None, None,
-         # ProductVersion, IsDebug, IsPatched, IsPreReleased, IsPrivate
-         None, None, None, None, None,
-         # IsSpecialBuild, PrivateBuild, SpecialBuild, InsertionTime
-         None, None, None, str(time())))
+        "INSERT INTO " + dbname + " VALUES (" + "?," * 8 + "?)",
+        # FileName, SHA256
+        (basename, sha256,
+         # SHA512,
+         sha512,
+         # Extracted, SymbolsObtained
+         0, 0,
+         # IsSeceded, SecededBy,
+         0, None,
+         # DiskPath,
+         str(file),
+         # InsertionTime
+         str(time())))
 
     dbcursor.close()
     return True

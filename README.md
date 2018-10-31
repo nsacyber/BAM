@@ -11,6 +11,7 @@ Requirements:
 * Back by sqlite for quick lookup of patches/PDBs and ability to 
 * Microsoft's symsrv.dll and symsrv.yes MUST be placed in \Windows\System32\ by an administrator. 
 * Must enable the "Enable Win32 long paths" group policy under "Administrative Templates\System\FileSystem" beginning with Windows 10 v1607 (Anniversary Update)
+* Must add location of Microsoft Debugging tools to PATH evnrionment variable
 
 Microsoft's Symbol Connection and Download EULA:
 symchk.exe will prompt the user to accept an Microsoft EULA when a symbol is going to be download from Microsoft's server. The symsrv.yes file (i.e., the YES file) is part of the Windows SDK installation in \Debugger\<arch>\ and is used to silently accept the Microsoft EULA to download the symbols from their servers. You can remove this file to individually accept/denied the EULA. 
