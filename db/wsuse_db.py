@@ -54,22 +54,12 @@ def construct_tables(db_conn):
         # Construct the UpdateFiles Table
         dbcursor.execute(
             "CREATE TABLE IF NOT EXISTS UpdateFiles " +
-            "(FileName text, OperatingSystemVersion text, " +
-            "Architecture text, Signature text, SHA256 text, SHA512 text, " +
-            "CreationDate text, ModifiedDate text, " +
-            "CategoryTypeCompany text, CategoryTypeProduct text, " +
-            "CategoryTypeProductFamily text, " +
-            "CategoryTypeUpdateClassification text, PackageType text, " +
-            "Extracted integer, SymbolsObtained integer, IsSeceded integer, " +
-            "SecededBy text, Language1 text, UpdateId text, " +
-            "RevisionNumber integer, RevisionId integer, IsLeaf integer, " +
-            "DiskPath text, FileId text, " +
-            "OriginalFilename text, FileDescription text, ProductName text, " +
-            "Comments text, CompanyName text, FileVersion text, " +
-            "ProductVersion text, IsDebug integer, IsPatched integer, " +
-            "IsPreReleased integer, IsPrivate integer, " +
-            "IsSpecialBuild integer, PrivateBuild text, " +
-            "SpecialBuild text, InsertionTime text);")
+            "(FileName text, " +
+            "SHA256 text, SHA512 text, " +
+            "Extracted integer, SymbolsObtained integer, WasSeceded integer, " +
+            "SecededBy text, " +
+            "DiskPath text, " +
+            "InsertionTime text);")
 
         # Construct the SymbolFiles Table
         dbcursor.execute(
@@ -114,7 +104,6 @@ def updatedbextractstat(extractedfile, status):
         (int(status), str(extractedfile)))
 
     return True
-
 
 def dbentryexist(dbcursor, dbname, sha256, sha512):
     '''
@@ -254,32 +243,24 @@ def writeupdate(file, sha256, sha512, \
     '''
     from time import time
 
-    packagetype = Path(file).suffix
     basename = os.path.basename(file)
     dbcursor = conn.cursor()
     dbgmsg("[WSUS_DB] is inserting new file and hash to updateDB")
 
     dbcursor.execute(
-        "INSERT INTO " + dbname + " VALUES (" + "?," * 38 + "?)",
-        # FileName, OperatingSystemVersion, Architecture, GUID, SHA256
-        (basename, None, None, None, sha256,
-         # SHA512, CreationDate, ModifiedDate, CategoryTypeCompnay
-         # CategoryTypeProduct,
-         sha512, None, None, None, None,
-         # CategoryTypeProductFamily, CategoryTypeUpdateClassification,
-         # PackageType, Extracted, SymbolsObtained
-         None, None, packagetype, 0, 0,
-         # IsSeceded, SecededBy, Language1, UpdateId, RevisionNumber
-         0, None, None, None, None,
-         # RevisionId, IsLeaf, DiskPath, FileId, OriginalFilename
-         None, None, str(file), None, None,
-         # FileDescritpion, ProductName, Comments, CompanyName,
-         # FileVersion
-         None, None, None, None, None,
-         # ProductVersion, IsDebug, IsPatched, IsPreReleased, IsPrivate
-         None, None, None, None, None,
-         # IsSpecialBuild, PrivateBuild, SpecialBuild, InsertionTime
-         None, None, None, str(time())))
+        "INSERT INTO " + dbname + " VALUES (" + "?," * 8 + "?)",
+        # FileName, SHA256
+        (basename, sha256,
+         # SHA512,
+         sha512,
+         # Extracted, SymbolsObtained
+         0, 0,
+         # IsSeceded, SecededBy,
+         0, None,
+         # DiskPath,
+         str(file),
+         # InsertionTime
+         str(time())))
 
     dbcursor.close()
     return True
@@ -295,118 +276,9 @@ def writebinary(file, sha256, sha512, infolist,  \
     updates database if already in existence
     '''
     basename = os.path.basename(file)
-    # arch = 'UNKNOWN'
-    # signature = 'UNKNOWN'
-    # age = -1
-    # pdbfilename = 'UNKNOWN'
-    # strippedpe = 0
-
-    # versionfields = {
-    #     'OriginalFilename': '', 'FileDescription': '', 'ProductName': '',
-    #     'Comments': '', 'CompanyName': '', 'FileVersion': '',
-    #     'ProductVersion': '', 'IsDebug': '', 'IsPatched': '',
-    #     'IsPreReleased': '', 'IsPrivateBuild': '', 'IsSpecialBuild': '',
-    #     'Language': '', 'PrivateBuild': '', 'SpecialBuild': ''
-    # }
-
-    # try:
-    #     unpefile = pefile.PE(file)
-    # except pefile.PEFormatError as peerror:
-    #     dbgmsg("[WSUS_DB] skipping due to exception: " + peerror.value)
-    #     return False
-
+    
     dbgmsg("[WSUS_DB] !! Working on " + str(file))
-    # fileext, stype = pebinarytype(unpefile)
-    # arch = getpearch(unpefile)
-    # signature = getpesigwoage(unpefile)
-    # age = getpeage(unpefile)
-    # pdbfilename = getpepdbfilename(unpefile)
-    # strippedpe = ispedbgstripped(file)
-    # builtwithdbginfo = ispebuiltwithdebug(file)
-    # osver = "UNKNOWN"
-
-    # Get the OS this PE is designed for ()
-    # Microsoft PE files distributed via Microsoft's Update typically
-    # use the ProductVersion file properties to indicate the OS the specific
-    # PE file is built too.
-
-    # a PE only have 1 VERSIONINFO, but multiple language strings
-    # More information on different properites can be found at
-    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa381058
-    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa381049
-    # convert below to the "dump()" ... try to use the "fixed" versioninfo
-
-    # versioninfo = getattr(unpefile, "VS_VERSIONINFO", None)
-    # if versioninfo is not None:
-    #     fileinfo = getattr(unpefile, "FileInfo", None)
-    #     if fileinfo is not None:
-    #         for fileentry in unpefile.FileInfo:
-    #             stringtable = getattr(fileentry, "StringTable", None)
-    #             if stringtable is not None:
-    #                 for strtable in fileentry.StringTable:
-    #                     # Currently only handling unicode en-us
-    #                     if strtable.LangID[:4] == b'0409' or \
-    #                             (strtable.LangID[:4] == b'0000' and
-    #                              (strtable.LangID[4:] == b'04b0' or
-    #                               strtable.LangID[4:] == b'04B0')):
-    #                         versionfields["Language"] \
-    #                             = strtable.LangID.decode("utf-8")
-    #                         for field, value in strtable.entries.items():
-    #                             dfield = field.decode('utf-8')
-    #                             dvalue = value.decode('utf-8')
-    #                             if dfield == "OriginalFilename":
-    #                                 versionfields["OriginalFilename"] \
-    #                                     = dvalue
-    #                             if dfield == "FileDescription":
-    #                                 versionfields["FileDescription"] \
-    #                                     = dvalue
-    #                             if dfield == "ProductName":
-    #                                 versionfields["ProductName"] \
-    #                                     = dvalue
-    #                             if dfield == "Comments":
-    #                                 versionfields["Comments"] \
-    #                                     = dvalue
-    #                             if dfield == "CompanyName":
-    #                                 versionfields["CompanyName"] \
-    #                                     = dvalue
-    #                             if dfield == "FileVersion":
-    #                                 versionfields["FileVersion"] \
-    #                                     = dvalue
-    #                             if dfield == "ProductVersion":
-    #                                 versionfields["ProductVersion"] \
-    #                                     = dvalue
-    #                             if dfield == "IsDebug":
-    #                                 versionfields["IsDebug"] \
-    #                                     = dvalue
-    #                             if dfield == "IsPatched":
-    #                                 versionfields["IsPatched"] \
-    #                                     = dvalue
-    #                             if dfield == "IsPreReleased":
-    #                                 versionfields["IsPreReleased"] \
-    #                                     = dvalue
-    #                             if dfield == "IsPrivateBuild":
-    #                                 versionfields["IsPrivateBuild"] \
-    #                                     = dvalue
-    #                             if dfield == "IsSpecialBuild":
-    #                                 versionfields["IsSpecialBuild"] \
-    #                                     = dvalue
-    #                             if dfield == "PrivateBuild":
-    #                                 versionfields["PrivateBuild"] \
-    #                                     = dvalue
-    #                             if dfield == "SpecialBuild":
-    #                                 versionfields["SpecialBuild"] \
-    #                                     = dvalue
-
     dbgmsg("[WSUS_DB] " + str(infolist))
-
-    # if this is a Microsoft binary the Product version is typically
-    # the os version it was built for, but other products this is not
-    # necessarily true
-    # could "verify" Microsoft binary by signature of binary like with
-    #  "trusting" Update file's name
-    # Use the PE format to get the targeted OS version....
-    # if versionfields['ProductName'].find("Operating System") != -1:
-    #     osver = "NT" + versionfields['ProductVersion']
 
     dbcursor = conn.cursor()
 
@@ -435,7 +307,6 @@ def writebinary(file, sha256, sha512, infolist,  \
          infolist['SpecialBuild'], str(infolist['builtwithdbginfo']), int(infolist['strippedpe']), None, int(False)))
 
     dbcursor.close()
-    # unpefile.close()
     return True
 
 def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
@@ -448,20 +319,10 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
     basename = os.path.basename(file)
     dbcursor = conn.cursor()
     ignored = False
-    # signature = ''
     symcontains = 'UNKNOWN'
     public = False
     private = False
-    # unpefile = None
     ignoredreason = 'None'
-
-    # try:
-    #     unpefile = pefile.PE(file)
-    # except pefile.PEFormatError as peerror:
-    #     dbgmsg("[WSUS_DB] Caught: PE error " + str(peerror) + ". File: " + file)
-    #     return False
-
-    # arch = getpearch(unpefile)
 
     symchkarr = {
         "Struct size:": '',
@@ -516,24 +377,9 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
 
         line = None
 
-    # try:
     if re.search(" IGNORED  -", symchkout[-5]):
         ignored = True
         ignoredreason = symchkout[-5].split("  - ")[1]
-
-    #         # If a PE file is ignored, symchk.exe will not provide any unique information
-    #         # about the PE file (i.e., Signature). Therefore, we extract the
-    #         # Signature (GUID) from the PE ourselves
-    #         signature = getpesigwoage(unpefile)
-    #     else:
-    #         if symchkarr["PDB7 Sig:"] != '' and \
-    #         symchkarr["PDB7 Sig:"] != '{00000000-0000-0000-0000-000000000000}':
-    #             signature = symchkarr["PDB7 Sig:"]
-    #         elif symchkarr["PDB Sig:"] != '':
-    #             signature = symchkarr["PDB Sig:"]
-    # except IndexError as ierror:
-    #     dbgmsg("[WSUS_DB] {-} Parsing symchk output IGNORED: " + str(ierror) + " on " + file)
-    #     return False
 
     if symchkarr["SymType:"] == "SymNone":
         source = ''
@@ -599,8 +445,6 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
          source, symchkarr["Result"], int(ignored), ignoredreason,
          #SymbolObtained
          symbolobtained))
-
-    # unpefile.close()
 
     dbcursor.close()
     return True
