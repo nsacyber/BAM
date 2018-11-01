@@ -492,95 +492,8 @@ class CleanMgr(threading.Thread):
                     # in the DBG file options.
                     self.symmgr.receivejobset(str(result[0][0]))
                     dbgmsg("[CLNMGR] items passed to symmgr: " + str(result[0][0]))
-                # set up infolist to pass to DBMgr
-                infolist = {
-                    'OriginalFilename': '', 'FileDescription': '', 'ProductName': '',
-                    'Comments': '', 'CompanyName': '', 'FileVersion': '',
-                    'ProductVersion': '', 'IsDebug': '', 'IsPatched': '',
-                    'IsPreReleased': '', 'IsPrivateBuild': '', 'IsSpecialBuild': '',
-                    'Language': '', 'PrivateBuild': '', 'SpecialBuild': ''
-                    }
 
-                try:
-                    unpefile = pefile.PE(result[0][0])
-                except pefile.PEFormatError as peerror:
-                    dbgmsg("[WSUS_DB] skipping due to exception: " + peerror.value)
-                    return False
-
-                infolist['fileext'], infolist['stype'] = pebinarytype(unpefile)
-                infolist['arch'] = getpearch(unpefile)
-                infolist['signature'] = getpesigwoage(unpefile)
-                infolist['age'] = getpeage(unpefile)
-                infolist['pdbfilename'] = getpepdbfilename(unpefile)
-                infolist['strippedpe'] = ispedbgstripped(result[0][0])
-                infolist['builtwithdbginfo'] = ispebuiltwithdebug(result[0][0])
-
-                versioninfo = getattr(unpefile, "VS_VERSIONINFO", None)
-                if versioninfo is not None:
-                    fileinfo = getattr(unpefile, "FileInfo", None)
-                    if fileinfo is not None:
-                        for fileentry in unpefile.FileInfo:
-                            stringtable = getattr(fileentry, "StringTable", None)
-                            if stringtable is not None:
-                                for strtable in fileentry.StringTable:
-                                    # Currently only handling unicode en-us
-                                    if strtable.LangID[:4] == b'0409' or \
-                                            (strtable.LangID[:4] == b'0000' and
-                                            (strtable.LangID[4:] == b'04b0' or
-                                            strtable.LangID[4:] == b'04B0')):
-                                        infolist["Language"] \
-                                            = strtable.LangID.decode("utf-8")
-                                        for field, value in strtable.entries.items():
-                                            dfield = field.decode('utf-8')
-                                            dvalue = value.decode('utf-8')
-                                            if dfield == "OriginalFilename":
-                                                infolist["OriginalFilename"] \
-                                                    = dvalue
-                                            if dfield == "FileDescription":
-                                                infolist["FileDescription"] \
-                                                    = dvalue
-                                            if dfield == "ProductName":
-                                                infolist["ProductName"] \
-                                                    = dvalue
-                                            if dfield == "Comments":
-                                                infolist["Comments"] \
-                                                    = dvalue
-                                            if dfield == "CompanyName":
-                                                infolist["CompanyName"] \
-                                                    = dvalue
-                                            if dfield == "FileVersion":
-                                                infolist["FileVersion"] \
-                                                    = dvalue
-                                            if dfield == "ProductVersion":
-                                                infolist["ProductVersion"] \
-                                                    = dvalue
-                                            if dfield == "IsDebug":
-                                                infolist["IsDebug"] \
-                                                    = dvalue
-                                            if dfield == "IsPatched":
-                                                infolist["IsPatched"] \
-                                                    = dvalue
-                                            if dfield == "IsPreReleased":
-                                                infolist["IsPreReleased"] \
-                                                    = dvalue
-                                            if dfield == "IsPrivateBuild":
-                                                infolist["IsPrivateBuild"] \
-                                                    = dvalue
-                                            if dfield == "IsSpecialBuild":
-                                                infolist["IsSpecialBuild"] \
-                                                    = dvalue
-                                            if dfield == "PrivateBuild":
-                                                infolist["PrivateBuild"] \
-                                                    = dvalue
-                                            if dfield == "SpecialBuild":
-                                                infolist["SpecialBuild"] \
-                                                    = dvalue
-                if infolist['ProductName'].find("Operating System") != -1:
-                    infolist['osver'] = "NT" + infolist['ProductVersion']
-                else:
-                    infolist['osver'] = "UNKNOWN"
-
-                self.dbc.addtask("binary", result[0], result[1], result[2], infolist)
+                self.dbc.addtask("binary", result[0], result[1], result[2], result[3])
 
     def run(self):
         '''
@@ -644,7 +557,111 @@ class CleanMgr(threading.Thread):
 
             # getting to this point means item is not in db, may need to come up
             # with case where db needs to update item though
-            results = ((str(jobfile), None), hashes[0], hashes[1])
+            infolist = {
+                    'OriginalFilename': '', 'FileDescription': '', 'ProductName': '',
+                    'Comments': '', 'CompanyName': '', 'FileVersion': '',
+                    'ProductVersion': '', 'IsDebug': '', 'IsPatched': '',
+                    'IsPreReleased': '', 'IsPrivateBuild': '', 'IsSpecialBuild': '',
+                    'Language': '', 'PrivateBuild': '', 'SpecialBuild': ''
+                    }
+
+            try:
+                unpefile = pefile.PE(jobfile)
+            except pefile.PEFormatError as peerror:
+                dbgmsg("[WSUS_DB] skipping due to exception: " + peerror.value)
+                return False
+
+            infolist['fileext'], infolist['stype'] = pebinarytype(unpefile)
+            infolist['arch'] = getpearch(unpefile)
+            infolist['signature'] = getpesigwoage(unpefile)
+            infolist['age'] = getpeage(unpefile)
+            infolist['pdbfilename'] = getpepdbfilename(unpefile)
+            infolist['strippedpe'] = ispedbgstripped(jobfile)
+            infolist['builtwithdbginfo'] = ispebuiltwithdebug(jobfile)
+
+            # a PE only have 1 VERSIONINFO, but multiple language strings
+            # More information on different properites can be found at
+            # https://msdn.microsoft.com/en-us/library/windows/desktop/aa381058
+            # https://msdn.microsoft.com/en-us/library/windows/desktop/aa381049
+            # convert below to the "dump()" ... try to use the "fixed" versioninfo
+            versioninfo = getattr(unpefile, "VS_VERSIONINFO", None)
+            if versioninfo is not None:
+                fileinfo = getattr(unpefile, "FileInfo", None)
+                if fileinfo is not None:
+                    for fileentry in unpefile.FileInfo:
+                        stringtable = getattr(fileentry, "StringTable", None)
+                        if stringtable is not None:
+                            for strtable in fileentry.StringTable:
+                                # Currently only handling unicode en-us
+                                if strtable.LangID[:4] == b'0409' or \
+                                        (strtable.LangID[:4] == b'0000' and
+                                        (strtable.LangID[4:] == b'04b0' or
+                                        strtable.LangID[4:] == b'04B0')):
+                                    infolist["Language"] \
+                                        = strtable.LangID.decode("utf-8")
+                                    for field, value in strtable.entries.items():
+                                        dfield = field.decode('utf-8')
+                                        dvalue = value.decode('utf-8')
+                                        if dfield == "OriginalFilename":
+                                            infolist["OriginalFilename"] \
+                                                = dvalue
+                                        if dfield == "FileDescription":
+                                            infolist["FileDescription"] \
+                                                = dvalue
+                                        if dfield == "ProductName":
+                                            infolist["ProductName"] \
+                                                = dvalue
+                                        if dfield == "Comments":
+                                            infolist["Comments"] \
+                                                = dvalue
+                                        if dfield == "CompanyName":
+                                            infolist["CompanyName"] \
+                                                = dvalue
+                                        if dfield == "FileVersion":
+                                            infolist["FileVersion"] \
+                                                = dvalue
+                                        if dfield == "ProductVersion":
+                                            infolist["ProductVersion"] \
+                                                = dvalue
+                                        if dfield == "IsDebug":
+                                            infolist["IsDebug"] \
+                                                = dvalue
+                                        if dfield == "IsPatched":
+                                            infolist["IsPatched"] \
+                                                = dvalue
+                                        if dfield == "IsPreReleased":
+                                            infolist["IsPreReleased"] \
+                                                = dvalue
+                                        if dfield == "IsPrivateBuild":
+                                            infolist["IsPrivateBuild"] \
+                                                = dvalue
+                                        if dfield == "IsSpecialBuild":
+                                            infolist["IsSpecialBuild"] \
+                                                = dvalue
+                                        if dfield == "PrivateBuild":
+                                            infolist["PrivateBuild"] \
+                                                = dvalue
+                                        if dfield == "SpecialBuild":
+                                            infolist["SpecialBuild"] \
+                                                = dvalue
+            # Get the OS this PE is designed for ()
+            # Microsoft PE files distributed via Microsoft's Update typically
+            # use the ProductVersion file properties to indicate the OS the specific
+            # PE file is built too.
+            # if this is a Microsoft binary the Product version is typically
+            # the os version it was built for, but other products this is not
+            # necessarily true
+            # could "verify" Microsoft binary by signature of binary like with
+            #  "trusting" Update file's name
+            # Use the PE format to get the targeted OS version....
+            if infolist['ProductName'].find("Operating System") != -1:
+                infolist['osver'] = "NT" + infolist['ProductVersion']
+            else:
+                infolist['osver'] = "UNKNOWN"
+
+            unpefile.close()
+
+            results = ((str(jobfile), None), hashes[0], hashes[1], infolist)
             dbgmsg("[CLNMGR] completed one cleantask")
         else:
             # if jobfile is not a PE, then check if it's a cab. If not a cab, remove it.
@@ -711,18 +728,7 @@ class SymMgr(threading.Thread):
         else:
             results = future.result()
             if results is not None:
-                infolist = {}
-
-                try:
-                    unpefile = pefile.PE(results[0][0])
-                except pefile.PEFormatError as peerror:
-                    dbgmsg("[WSUS_DB] Caught: PE error " + str(peerror) + ". File: " + results[0][0])
-                    return False
-
-                infolist['signature'] = getpesigwoage(unpefile)
-                infolist['arch'] = getpearch(unpefile)
-
-                self.dbc.addtask("symbol", results[0], results[1], results[2], infolist)
+                self.dbc.addtask("symbol", results[0], results[1], results[2], results[3])
             else:
                 dbgmsg("[SYMMGR] no symbols found")
 
@@ -794,8 +800,20 @@ class SymMgr(threading.Thread):
 
             dbgmsg("[SYMMGR] Attempt to obtain symbols for " + str(jobfile) + " complete")
 
+            infolist = {}
+            try:
+                unpefile = pefile.PE(jobfile)
+            except pefile.PEFormatError as peerror:
+                dbgmsg("[WSUS_DB] Caught: PE error " + str(peerror) + ". File: " + jobfile)
+                return False
+
+            infolist['signature'] = getpesigwoage(unpefile)
+            infolist['arch'] = getpearch(unpefile)
+
+            unpefile.close()
+
             stderrsplit.append(symserver)
-            result = ((str(jobfile), stderrsplit, stdoutsplit), hashes[0], hashes[1])
+            result = ((str(jobfile), stderrsplit, stdoutsplit), hashes[0], hashes[1], infolist)
 
         dbgmsg("[SYMMGR] completed symtask for " + str(jobfile))
         return result
