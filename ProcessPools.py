@@ -116,8 +116,7 @@ class ExtractMgr(threading.Thread):
         if not job is None:
             if job[0][1]:
                 for task in job[0][1]:
-                    if validatecab(task):
-                        self.addq(task)
+                    self.addq(task)
 
     def run(self):
         '''
@@ -200,8 +199,9 @@ class ExtractMgr(threading.Thread):
         result = None
         dbgmsg("[EXMGR] Listing " + str(src) + " CAB contents")
         try:
-            result = subprocess.check_output(
-                ["expand.exe", "-D", src], shell=False)
+            args = "expand -D " + str(src)
+            with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as pexp:
+                result, dummy = pexp.communicate()
         except subprocess.CalledProcessError as error:
             dbgmsg("[EXMGR] {-} Listing contents of " + src +
                    " failed with " + str(error.returncode) + " " +  \
@@ -215,11 +215,11 @@ class ExtractMgr(threading.Thread):
         Call expand.exe to extract files (if any)
         '''
         result = None
+        args = "expand -R " + str(src) + " -F:" + str(extstr) + " " + str(newdir)
         try:
-            dbgmsg("[EXMGR] extracting " + extstr + " at " + newdir)
-            result = subprocess.check_output(
-                ["expand", "-R",
-                 src, "-F:" + extstr, newdir], shell=False)
+            with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as pexp:
+                rawstdout, dummy = pexp.communicate()
+                result = rawstdout.decode("ascii")
             dbgmsg("[EXMGR] extracted " + extstr + " at " + newdir)
         except subprocess.CalledProcessError as error:
             dbgmsg("[EXMGR] {-} extracting " + extstr + " from " + src +    \
@@ -237,16 +237,15 @@ class ExtractMgr(threading.Thread):
         '''
         result = None
         dbgmsg("[EXMGR] Performing 7z on " + newpath)
+        args = "C:\\Program Files\\7-Zip\\7z.exe x -aoa -o" + str(newpath) + " -y " +str(src) + " *.dll *.sys *.exe -r"
         try:
-            result = subprocess.check_output(["C:\\Program Files\\7-Zip\\7z.exe", "x",
-                                              "-aoa",
-                                              "-o" + newpath + "", "-y", src],
-                                             shell=False)
-            dbgmsg("[EXMGR] extracted all files within EXE")
+            with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as p7z:
+                result, dummy = p7z.communicate()
         except subprocess.CalledProcessError as error:
             dbgmsg("[EXMGR] {-} extracting, using 7z, from " + src +
                    " failed with " + str(error.returncode) + " " +  \
-                    error.output.decode('ascii'))
+                   error.output.decode('ascii'))
+        
         return result
 
     @classmethod
@@ -331,7 +330,7 @@ class ExtractMgr(threading.Thread):
             if not entryexists and cls.perform7zextract(src, newdir) is None:
                 return deliverables
 
-            deliverables = ((newdir, [src]), hashes[0], hashes[1])
+            deliverables = ((newdir, []), hashes[0], hashes[1])
         else:
 
             if not validatecab(str(src)):
@@ -481,7 +480,7 @@ class CleanMgr(threading.Thread):
         else:
             result = future.result()
             if not result is None:
-                if ispebuiltwithdebug(str(result[0][0])) and self.symmgr is not None:
+                if result[3]['builtwithdbginfo'] and self.symmgr is not None:
                     # only need to use ispebuiltwithdebug here because that condition
                     # takes precedence over the stripped condition and if the item is
                     # stripped, a check must be made by symchk anyway to find the .dbg
