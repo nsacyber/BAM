@@ -1,7 +1,7 @@
 '''
 Imports
 '''
-from .utils import dbgmsg
+from .utils import dbgmsg, rmfile
 
 from .utils import getpearch, getpesigwoage, getpeage, getpepdbfilename, ispe
 
@@ -17,5 +17,6 @@ __all__ = [
     'validatecab',
     'validatezip',
     'ispedbgstripped',
-    'getfilehashes'
+    'getfilehashes',
+    'rmfile'
 ]

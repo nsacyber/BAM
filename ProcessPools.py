@@ -29,7 +29,7 @@ from db import wsuse_db
 
 from support.utils import dbgmsg, validatecab, ispe, validatezip, \
     getfilehashes, ispebuiltwithdebug, pebinarytype, getpepdbfilename, \
-    getpeage, getpearch, getpesigwoage, ispedbgstripped
+    getpeage, getpearch, getpesigwoage, ispedbgstripped, rmfile
 
 from dependencies.pefile import pefile
 
@@ -116,8 +116,7 @@ class ExtractMgr(threading.Thread):
         if not job is None:
             if job[0][1]:
                 for task in job[0][1]:
-                    if validatecab(task):
-                        self.addq(task)
+                    self.addq(task)
 
     def run(self):
         '''
@@ -410,13 +409,11 @@ class ExtractMgr(threading.Thread):
                             if not validatecab(str(newpath)):
                                 dbgmsg("[EXMGR] {-} extracttask: " + str(newpath) + " extracted from " + \
                                     str(src) +  " is not a validate cab")
-                                try:
-                                    dbgmsg("[EXMGR] extracttask: Removing " + str(newpath))
-                                    os.remove(newpath)
-                                except FileNotFoundError as ferror:
-                                    dbgmsg("[EXMGR] {-} extracttask couldn't remove " + str(newpath) + " " + \
-                                        str(ferror.strerror) + " (" + str(ferror.winerror) + \
-                                        ")")
+
+                                dbgmsg("[EXMGR] extracttask: Removing " + str(newpath))
+
+                                rmfile(newpath)
+
                                 continue
 
                             dbgmsg("[EXMGR] Creating " + str(newpath) + " for new thread...")
@@ -481,12 +478,12 @@ class CleanMgr(threading.Thread):
         else:
             result = future.result()
             if not result is None:
-                if ispebuiltwithdebug(str(result[0][0])) and self.symmgr is not None:
-                    # only need to use ispebuiltwithdebug here because that condition
-                    # takes precedence over the stripped condition and if the item is
-                    # stripped, a check must be made by symchk anyway to find the .dbg
-                    # file.
-                    # refer to:
+                if result[3]["builtwithdbginfo"] and self.symmgr is not None:
+                    # only need to use verify if PE was builtwithdbginfo here because 
+                    # that condition takes precedence over the stripped condition and 
+                    # if the item is stripped, a check must be made by symchk anyway 
+                    # to find the .dbg file.
+                    # Reference:
                     # https://docs.microsoft.com/en-us/windows-hardware/drivers
                     # /debugger/symchk-command-line-options
                     # in the DBG file options.
@@ -513,9 +510,10 @@ class CleanMgr(threading.Thread):
                     jobdir = self.jobs.pop(0)
                     for root, dummy, files in os.walk(jobdir):
                         for file in files:
-                            dbgmsg("[CLNMGR] assigning cleaning job for " + file)
                             filepath = Path(os.path.join(root, file)).resolve()
-                            future = executor.submit(self.cleantask, filepath)
+                            dbgmsg("[CLNMGR] assigning cleaning job for " + str(filepath))
+                            
+                            future = executor.submit(self.cleantask, str(filepath))
                             future.add_done_callback(self.passresult)
 
                 self.jobsready.clear()
@@ -540,6 +538,9 @@ class CleanMgr(threading.Thread):
         if item is removed in cleaning, None is returned, else return item
         '''
         results = None
+
+        dbgmsg("[CLNMGR] Starting on " + str(jobfile))
+
         if ispe(jobfile):
             # check db to see if job already exists:
             hashes = getfilehashes(jobfile)
@@ -568,8 +569,8 @@ class CleanMgr(threading.Thread):
             try:
                 unpefile = pefile.PE(jobfile)
             except pefile.PEFormatError as peerror:
-                dbgmsg("[WSUS_DB] skipping due to exception: " + peerror.value)
-                return False
+                dbgmsg("[WSUS_DB] skipping " + str(jobfile) + " due to exception: " + peerror.value)
+                return results
 
             infolist['fileext'], infolist['stype'] = pebinarytype(unpefile)
             infolist['arch'] = getpearch(unpefile)
@@ -662,16 +663,19 @@ class CleanMgr(threading.Thread):
             unpefile.close()
 
             results = ((str(jobfile), None), hashes[0], hashes[1], infolist)
-            dbgmsg("[CLNMGR] completed one cleantask")
         else:
             # if jobfile is not a PE, then check if it's a cab. If not a cab, remove it.
             if not validatecab(str(jobfile)):
                 dbgmsg("[CLNMGR] cleantask: Removing " + str(jobfile))
-                os.remove(jobfile)
+
+                rmfile(jobfile)
+
                 dbgmsg("[CLNMGR] " + str(jobfile) + " removed, not PE or cab file")
             else:
                 dbgmsg("[CLNMGR] " + str(jobfile) + " is nested cab, skipping")
             return results
+
+        dbgmsg("[CLNMGR] completed one cleantask for " + str(jobfile))
 
         return results
 
@@ -788,7 +792,7 @@ class SymMgr(threading.Thread):
         else:
             servers = "u \"srv*" + symdest + "*" + symserver +"\""
 
-        args = ("symchk.exe /v \"" + str(jobfile) + "\" /s" + servers + " /od")
+        args = (".\\tools\\x64\\symchk.exe /v \"" + str(jobfile) + "\" /s" + servers + " /od")
 
         with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE) \
                 as psymchk:

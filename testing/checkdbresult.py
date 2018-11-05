@@ -208,7 +208,7 @@ try:
               "{} ({}) were obtained.".format(FILENAME, SIGNATURE))
         print("........")
         CURSOR.execute("SELECT * FROM SymbolFiles " +
-                       "WHERE Signature = '" + SIGNATURE + "'")
+                       "WHERE Signature = '" + SIGNATURE + "' LIMIT 1")
         for row in CURSOR.fetchall():
             for column in row.keys():
                 print(column + " --> ", end='')
@@ -238,7 +238,7 @@ try:
               "{}, {}".format(FILENAME, SIGNATURE))
         print("........")
         CURSOR.execute("SELECT * FROM PatchedFiles "
-                       "WHERE Signature = '" + SIGNATURE + "'")
+                       "WHERE Signature = '" + SIGNATURE + "' LIMIT 1")
         for row in CURSOR.fetchall():
             for column in row.keys():
                 print(column + " --> ", end='')

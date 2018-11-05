@@ -79,8 +79,11 @@ def rmfile(file):
     if((os.stat(file).st_file_attributes & 0x0000000F) ==
        stat.FILE_ATTRIBUTE_READONLY):
         os.chmod(file, stat.FILE_ATTRIBUTE_NORMAL)
-    os.remove(file)
+    
+    import contextlib
 
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(file)
 
 def writeperm(pathtodir):
     '''
@@ -223,7 +226,7 @@ def ispe(file):
     checks for valid PE file
     '''
     try:
-        petemp = pefile.PE(file, fast_load=True)
+        petemp = pefile.PE(file, fast_load=False)
         petemp.close()
     except (pefile.PEFormatError, IOError):
         return False
