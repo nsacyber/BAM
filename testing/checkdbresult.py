@@ -84,7 +84,7 @@ try:
             print(column + " --> " + str(row[column]))
         print("")
 
-    header("Find two file that has PDB symbols (PDB)",
+    header("Find two file that have PDB symbols (PDB)",
            COUNT)
     CURSOR.execute("SELECT * FROM SymbolFiles "
                    "WHERE symtype = 'SymPDB' LIMIT 2")
@@ -186,7 +186,7 @@ try:
 
     testhdr("Cases for correlating information")
 
-    header("Find 1 patched file that has obtained symbols", COUNT)
+    header("Find 1 patched file that have obtained symbols", COUNT)
     CURSOR.execute("SELECT FileName,Signature,SymbolObtained,SymbolPath," +
                    "DiskPath FROM PatchedFiles " +
                    "WHERE SymbolObtained = 1 LIMIT 1")
@@ -426,6 +426,14 @@ try:
 
     header("Total Updates files enter into DB", COUNT)
     CURSOR.execute("SELECT count(FileName) FROM UpdateFiles")
+    for row in CURSOR.fetchall():
+        for column in row.keys():
+            print(column + " --> " + str(row[column]))
+        print("")
+
+
+    header("Find the update a PE file came from", COUNT)
+    CURSOR.execute("SELECT * FROM PatchedFiles WHERE UpdateId != '' LIMIT 7")
     for row in CURSOR.fetchall():
         for column in row.keys():
             print(column + " --> " + str(row[column]))

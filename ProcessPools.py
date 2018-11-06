@@ -830,7 +830,7 @@ class DBMgr(threading.Thread):
     conditions.
     dbConn - sqlite3 connection to database
     '''
-    def __init__(self, dbconn=None):
+    def __init__(self, exdest,dbconn=None):
         super(DBMgr, self).__init__()
         self.dbconn = dbconn
         # jobqueue - queue to hold database write tasks
@@ -841,6 +841,7 @@ class DBMgr(threading.Thread):
         # by any of the other 3 Mgrs. When count is 3, indicates that there are no more jobs
         self.donecount = 0
         self.dbrecordscnt = 0
+        self.exdest = exdest
 
     def addtask(self, optype, jobtuple, sha256, sha512, infolist):
         '''
@@ -876,7 +877,7 @@ class DBMgr(threading.Thread):
         '''
         dbgmsg("[DBMGR] writing symbol for (" + str(file) + ")")
 
-        wsuse_db.writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, conn=self.dbconn)
+        wsuse_db.writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, self.exdest, conn=self.dbconn)
 
     def donesig(self):
         '''
@@ -910,7 +911,7 @@ class DBMgr(threading.Thread):
                     # this case is only ran once
                     print("[DBUP] Restarting limit count")
                     wsuse_db.starttransaction(self.dbconn)
-                elif self.dbrecordscnt >= 5000:
+                elif self.dbrecordscnt >= 15000:
                     print("[DBUP] limit to commit hit")
                     wsuse_db.endtransaction(self.dbconn)
                     self.dbrecordscnt = 0

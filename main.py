@@ -180,8 +180,12 @@ if __name__ == "__main__":
         # (internet or no internet)
         print("Extracting updates and retrieving symbols")
 
+        patchdest = None
+
         if ARGS.patchdest:
             checkdirectoryexist(ARGS.patchdest)
+        
+        patchdest = ARGS.patchdest.rstrip('\\')
 
         if ARGS.symdestpath:
             checkdirectoryexist(ARGS.symdestpath)
@@ -191,7 +195,7 @@ if __name__ == "__main__":
             globs.DBCONN.close()
             exit()
 
-        DB = DBMgr(globs.DBCONN)
+        DB = DBMgr(patchdest, globs.DBCONN)
         SYM = PATCH = UPDATE = None
 
         print("Examining " + ARGS.patchpath)
@@ -217,7 +221,7 @@ if __name__ == "__main__":
 
         SYM = SymMgr(CPUS, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL)
         PATCH = CleanMgr(CPUS, SYM, DB)
-        UPDATE = ExtractMgr(ARGS.patchpath, ARGS.patchdest, CPUS, PATCH, DB, LOCALDBC)
+        UPDATE = ExtractMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC)
 
         START_TIME = time.time()
         DB.start()

@@ -37,50 +37,13 @@ def construct_tables(db_conn):
 
     try:
         # Construct the PatchedFiles
-        dbcursor.execute(
-            "CREATE TABLE IF NOT EXISTS PatchedFiles " +
-            "(FileName text, OperatingSystemVersion text, Architecture text," +
-            " Signature text, SHA256 text, SHA512 text, Age integer, " +
-            "PdbFilename text, DiskPath text, SymbolObtained integer, " +
-            "SymbolPath text, FileExtension text, Type text, " +
-            "OriginalFilename text, FileDescription text, ProductName text, " +
-            "Comments text, CompanyName text, FileVersion text, " +
-            "ProductVersion text, IsDebug integer, IsPatched integer, " +
-            "IsPreReleased integer, IsPrivate integer, " +
-            "IsSpecialBuild integer, Language text, PrivateBuild text, " +
-            "SpecialBuild text, BuiltwithDbgInfo text, StrippedPE integer," +
-            "UpdateId text, Ignored integer);")
+        dbcursor.execute(globs.PATCHEDFILETSTMT)
 
         # Construct the UpdateFiles Table
-        dbcursor.execute(
-            "CREATE TABLE IF NOT EXISTS UpdateFiles " +
-            "(FileName text, " +
-            "SHA256 text, SHA512 text, " +
-            "Extracted integer, SymbolsObtained integer, WasSeceded integer, " +
-            "SecededBy text, " +
-            "DiskPath text, " +
-            "InsertionTime text);")
+        dbcursor.execute(globs.UPDATEFILETSTMT)
 
         # Construct the SymbolFiles Table
-        dbcursor.execute(
-            "CREATE TABLE IF NOT EXISTS SymbolFiles " +
-            "(FileName text, Architecture text, Signature text, " +
-            "SHA256 text, SHA512 text, " +
-            "PublicSymbol integer, " +
-            "PrivateSymbol integer, SymContains integer, " +
-            "structSize integer, base integer, imageSize integer, " +
-            "symDate integer, checksum integer, numsyms integer, " +
-            "symtype text, modname text, imagename text, " +
-            "loadedimage text, pdb text, CV text, CVDWORD integer, " +
-            "CVData text, PDB20Sig text, PDB70Sig text, Age integer, " +
-            "PDBMatched integer, DBGMatched integer, " +
-            "LineNumber integer, Globalsyms integer, TypeInfo integer, " +
-            "SymbolCheckVersionUsed integer, DbgFileName text, " +
-            "DbgTimeDatestamp integer, DbgSizeOfTime integer, " +
-            "DbgChecksum integer, PdbDbiAgeFullPdbFilename text, " +
-            "PdbSignature text, PdbDbiAge integer, Source text, " +
-            "Result integer, Ignored integer, IgnoredReason text, " +
-            "SymbolObtained integer);")
+        dbcursor.execute(globs.SYMBOLFILETSTMT)
 
         db_conn.commit()
         dbcursor.close()
@@ -88,20 +51,6 @@ def construct_tables(db_conn):
         print("Caught: " + error.args[0])
         dbcursor.close()
         return False
-
-    return True
-
-
-def updatedbextractstat(extractedfile, status):
-    '''
-    update the extraction status
-    '''
-    dbname = globs.UPDATEFILESDBNAME
-    dbcursor = globs.DBCONN.cursor()
-
-    dbcursor.execute(
-        "UPDATE " + dbname + " SET Extracted = ? WHERE FileName = ?",
-        (int(status), str(extractedfile)))
 
     return True
 
@@ -254,8 +203,8 @@ def writeupdate(file, sha256, sha512, \
          # SHA512,
          sha512,
          # Extracted, SymbolsObtained
-         0, 0,
-         # IsSeceded, SecededBy,
+         1, 0,
+         # WasSeceded, SecededBy,
          0, None,
          # DiskPath,
          str(file),
@@ -310,7 +259,7 @@ def writebinary(file, sha256, sha512, infolist,  \
     return True
 
 def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
-        dbname=globs.SYMBOLFILESDBNAME, conn=globs.DBCONN):
+        exdest, dbname=globs.SYMBOLFILESDBNAME, conn=globs.DBCONN):
     '''
     The fields taken from symchk.exe are taken from:
     MSDN docs - _IMAGEHLP_MODULE64 structure -
@@ -396,15 +345,28 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
 
         dbcursor.execute(("UPDATE " + globs.PATCHEDFILESDBNAME +    \
             " SET SymbolObtained = " +                              \
-            "{} WHERE Signature = '{}'").format(symbolobtained, infolist['signature']))
+            "{} WHERE SHA256 = '{}' AND Signature = '{}'").format(symbolobtained, sha256, infolist['signature']))
 
         dbcursor.execute(("UPDATE " + globs.PATCHEDFILESDBNAME + \
             " SET SymbolPath = '{}' WHERE " + \
-            "Signature = '{}'").format(symchkarr["PDB:"], infolist['signature']))
+            "SHA256 = '{}' AND Signature = '{}'").format(symchkarr["PDB:"], sha256, infolist['signature']))
+
+        base = os.path.basename(exdest)
+        uindex = 0
+
+        for index, x in enumerate(symchkarr["ImageName:"].split("\\")):
+            if x == base:
+                uindex = index+1
+
+        updateid = symchkarr["ImageName:"].split("\\")[uindex]
+
+        dbcursor.execute(("UPDATE " + globs.PATCHEDFILESDBNAME + \
+            " SET UpdateId = '{}' WHERE " + \
+            "SHA256 = '{}' AND Signature = '{}'").format(updateid, sha256, infolist['signature']))
 
     if ignored:
         dbcursor.execute("UPDATE " + globs.PATCHEDFILESDBNAME + \
-            " SET Ignored = {} WHERE Signature = '{}'".format(int(ignored), infolist['signature']))
+            " SET Ignored = {} WHERE SHA256 = '{}' AND Signature = '{}'".format(int(ignored), sha256, infolist['signature']))
 
     dbcursor.execute(
         "INSERT INTO " + dbname + " VALUES (" + "?," * 42 + "?)",
