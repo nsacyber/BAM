@@ -12,12 +12,16 @@ import stat
 
 import threading
 
+import logging, logging.handlers
+
 from dependencies.pefile import pefile
 
 import globs
 
+import BamLogger
+
 #*****************************************
-# Local variable
+# Local variables
 #*****************************************
 PEARCH = {
     pefile.MACHINE_TYPE['IMAGE_FILE_MACHINE_I386']: 'I386',
@@ -50,10 +54,19 @@ PEARCH = {
     pefile.MACHINE_TYPE['IMAGE_FILE_MACHINE_M32R']: 'M32R',
     pefile.MACHINE_TYPE['IMAGE_FILE_MACHINE_CEE']: 'CEE'
 }
+utilLogger = None
 
 #***********************************************
 # Functions
 #***********************************************
+def util_logconfig(queue):
+    global utilLogger
+
+    utilLogger = logging.getLogger("BAM.util")
+    qh = logging.handlers.QueueHandler(queue)
+    utilLogger.addHandler(qh)
+    utilLogger.setLevel(logging.DEBUG)
+
 def exitfunction():
     '''
     exit process
@@ -61,7 +74,7 @@ def exitfunction():
     sys.exit(0)
 
 
-def dbgmsg(msg):
+def dbgmsg(msg, logger):
     '''
     "debugging" function
     '''
@@ -69,7 +82,9 @@ def dbgmsg(msg):
         return
     pid = str(os.getpid())
     tid = "[Thread " + str(threading.get_ident()) + "] "
-    print("[" + pid + "]" + tid + msg)
+    logmsg = "[" + pid + "]" + tid + msg
+
+    logger.log(logging.DEBUG, logmsg)
 
 
 def rmfile(file):
@@ -96,12 +111,14 @@ def writeperm(pathtodir):
             try:
                 os.chmod(os.path.join(root, item), stat.S_IWRITE)
             except FileNotFoundError as dummy:
-                dbgmsg("writeperm: cannot find " + str(item))
+                dbgmsg("writeperm: cannot find " + str(item), utilLogger)
+                pass
         for folder in dirs:
             try:
                 os.chmod(os.path.join(root, folder), stat.S_IWRITE)
             except FileNotFoundError as dummy:
-                dbgmsg("writeperm: cannot find " + str(folder))
+                dbgmsg("writeperm: cannot find " + str(folder), utilLogger)
+                pass
     os.chmod(pathtodir, stat.S_IWRITE)
 
 
@@ -169,7 +186,8 @@ def getpesigwoage(unknownpefile):
                                    data4h, data5h, data6h)
                     guidstr = "{" + guidstr.upper() + "}"
     else:
-        dbgmsg("-- GUID not found....")
+        dbgmsg("-- GUID not found....", utilLogger)
+        pass
 
     return guidstr
 
@@ -191,7 +209,8 @@ def getpeage(unknownpefile):
 
                 age = attrage
     else:
-        dbgmsg("-- Age not found....")
+        dbgmsg("-- Age not found....", utilLogger)
+        pass
     return age
 
 
@@ -217,7 +236,8 @@ def getpepdbfilename(unknownpefile):
                     pass
                 return pdbfilename
     else:
-        dbgmsg("-- Pdbfilename not found....")
+        dbgmsg("-- Pdbfilename not found....", utilLogger)
+        pass
     return pdbfilename
 
 
@@ -272,7 +292,7 @@ def validatecab(unknownfile):
         "wsusscn2.cab" in unknownfile.lower() or    \
         "wuresdist.cab" in unknownfile.lower() or   \
             "muauth.cab" in unknownfile.lower():
-        dbgmsg("{-} Ignoring "+unknownfile+"...")
+        dbgmsg("{-} Ignoring "+unknownfile+"...", utilLogger)
         return False
     elif unknownfile.endswith(".cab") or unknownfile.endswith(".msu"):
         try:
@@ -286,7 +306,7 @@ def validatecab(unknownfile):
                     return True
         except FileNotFoundError as ferror:
             dbgmsg("{-} validatecab: Could not open " + str(unknownfile) + " " + \
-                   str(ferror.strerror) + " (" + str(ferror.winerror) + ")")
+                   str(ferror.strerror) + " (" + str(ferror.winerror) + ")", utilLogger)
             return False
     else:
         return False
@@ -309,7 +329,7 @@ def validatezip(unknownfile):
                     return True
         except FileNotFoundError as ferror:
             dbgmsg("{-} validatezip: Could not open " + str(unknownfile) + " " + \
-                   str(ferror.strerror) + " (" + str(ferror.winerror) + ")")
+                   str(ferror.strerror) + " (" + str(ferror.winerror) + ")", utilLogger)
             return False
     else:
         return False
@@ -330,7 +350,7 @@ def getfilehashes(jobfile):
             hashes = (sha256(buf).hexdigest(), sha512(buf).hexdigest())
     except FileNotFoundError as ferror:
         dbgmsg("{-} getfilehashes: Could not open " + str(jobfile) + " " + \
-            str(ferror.strerror) + " (" + str(ferror.winerror) + ")")
+            str(ferror.strerror) + " (" + str(ferror.winerror) + ")", utilLogger)
         return None
 
     return hashes

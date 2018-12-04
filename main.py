@@ -13,14 +13,19 @@ from pathlib import Path
 
 import os
 
-from support.utils import dbgmsg, exitfunction
+import logging
 
-from db.wsuse_db import construct_tables
+import multiprocessing as mp
 
-from ProcessPools import DBMgr, ExtractMgr, CleanMgr, SymMgr
+from support.utils import dbgmsg, exitfunction, util_logconfig
+
+from db.wsuse_db import construct_tables, db_logconfig
+
+from ProcessPools import DBMgr, ExtractMgr, CleanMgr, SymMgr, mgr_logconfig
 
 import globs
 
+import BamLogger
 # ************************************************************
 # Requirements:
 #     Minimal Python Version: 3.6
@@ -148,8 +153,9 @@ def checkdirectoryexist(direxist):
             result = True
         except FileExistsError as ferror:
             dbgmsg("[MAIN] {-} unable to make symbol destination directory " + \
-                    str(ferror.winerror) + " " +  str(ferror.strerror))
-    dbgmsg("[MAIN] Directory ("+ direxist + ") results were " + str(int(result)))
+                    str(ferror.winerror) + " " +  str(ferror.strerror), mainlogger)
+            pass
+    dbgmsg("[MAIN] Directory ("+ direxist + ") results were " + str(int(result)), mainlogger)
     return result
 
 if __name__ == "__main__":
@@ -171,6 +177,19 @@ if __name__ == "__main__":
     GETSYMMIN = 0
 
     # set verbose output on or off, this is apparently the Python approved way to do this
+    globqueue = mp.Manager().Queue(-1)
+    mainlogger = logging.getLogger("BAM.main")
+    qh = logging.handlers.QueueHandler(globqueue)
+    mainlogger.addHandler(qh)
+    mainlogger.setLevel(logging.DEBUG)
+
+    util_logconfig(globqueue)
+    db_logconfig(globqueue)
+    mgr_logconfig(globqueue)
+
+    loggerProcess = mp.Process(target=BamLogger.log_listener, args=(globqueue, BamLogger.log_config))
+    loggerProcess.start()
+    
     if ARGS.verbose:
         import ModVerbosity
 
@@ -191,7 +210,7 @@ if __name__ == "__main__":
             checkdirectoryexist(ARGS.symdestpath)
 
         if not construct_tables(globs.DBCONN):
-            dbgmsg("[MAIN] Problem creating DB tables")
+            dbgmsg("[MAIN] Problem creating DB tables", mainlogger)
             globs.DBCONN.close()
             exit()
 
@@ -219,9 +238,9 @@ if __name__ == "__main__":
         # number of processes spawned will be equal to the number of CPUs in the system
         CPUS = os.cpu_count()
 
-        SYM = SymMgr(CPUS, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL)
-        PATCH = CleanMgr(CPUS, SYM, DB)
-        UPDATE = ExtractMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC)
+        SYM = SymMgr(CPUS, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL, globqueue)
+        PATCH = CleanMgr(CPUS, SYM, DB, globqueue)
+        UPDATE = ExtractMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue)
 
         START_TIME = time.time()
         DB.start()
@@ -255,7 +274,7 @@ if __name__ == "__main__":
         # Only create the SymbolFiles Table
         if ARGS.getsymbols:
             if not construct_tables(globs.DBCONN):
-                dbgmsg("[MAIN] Problem creating DB tables")
+                dbgmsg("[MAIN] Problem creating DB tables", mainlogger)
                 globs.DBCONN.close()
                 exit()
 
@@ -268,7 +287,7 @@ if __name__ == "__main__":
             if ARGS.symlocal:
                 LOCAL = True
 
-            SYM = SymMgr(4, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL)
+            SYM = SymMgr(4, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL, globqueue)
 
             DB.start()
             SYM.start()
@@ -289,7 +308,7 @@ if __name__ == "__main__":
         # Only create the PatchedFiles Table
         elif ARGS.getpatches:
             if not construct_tables(globs.DBCONN):
-                dbgmsg("[MAIN] Problem creating DB tables")
+                dbgmsg("[MAIN] Problem creating DB tables", mainlogger)
                 globs.DBCONN.close()
                 exit()
 
@@ -299,7 +318,7 @@ if __name__ == "__main__":
 
             print("Only retrieving patches")
 
-            CLEAN = CleanMgr(1, None, DB)
+            CLEAN = CleanMgr(1, None, DB, globqueue)
 
             DB.start()
             CLEAN.start()
@@ -320,7 +339,7 @@ if __name__ == "__main__":
         # Only create the UpdateFiles Table
         elif ARGS.getupdates:
             if not construct_tables(globs.DBCONN):
-                dbgmsg("[MAIN] Problem creating DB tables")
+                dbgmsg("[MAIN] Problem creating DB tables", mainlogger)
                 globs.DBCONN.close()
                 exit()
 
@@ -330,7 +349,7 @@ if __name__ == "__main__":
 
             print("Only retrieving updates")
 
-            UPD = ExtractMgr(ARGS.patchpath, ARGS.patchdest, 4, None, DB, True)
+            UPD = ExtractMgr(ARGS.patchpath, ARGS.patchdest, 4, None, DB, True, globqueue)
 
             DB.start()
             UPD.start()
@@ -350,3 +369,9 @@ if __name__ == "__main__":
                                               GETSYMMIN))
 
     globs.DBCONN.close()
+    # while not globqueue.empty():
+    #     globqueue.get()
+    # globqueue.close()
+    # globqueue.join_thread()
+    globqueue.put_nowait(None)
+    loggerProcess.join()
