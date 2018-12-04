@@ -911,7 +911,7 @@ class DBMgr(threading.Thread):
                     # this case is only ran once
                     print("[DBUP] Restarting limit count")
                     wsuse_db.starttransaction(self.dbconn)
-                elif self.dbrecordscnt >= 15000:
+                elif self.dbrecordscnt >= 5000:
                     print("[DBUP] limit to commit hit")
                     wsuse_db.endtransaction(self.dbconn)
                     self.dbrecordscnt = 0
