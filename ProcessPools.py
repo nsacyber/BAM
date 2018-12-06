@@ -31,7 +31,7 @@ import BamLogger
 
 from db import wsuse_db
 
-from support.utils import dbgmsg, validatecab, ispe, validatezip, \
+from support.utils import validatecab, ispe, validatezip, \
     getfilehashes, ispebuiltwithdebug, pebinarytype, getpepdbfilename, \
     getpeage, getpearch, getpesigwoage, ispedbgstripped, rmfile
 
@@ -42,12 +42,11 @@ from dependencies.pefile import pefile
 #****************************************************
 # Local Variables
 #****************************************************
-mgrlogger = None
+mgrlogger = logging.getLogger("BAM.Pools")
 
 def mgr_logconfig(queue):
     global mgrlogger
 
-    mgrlogger = logging.getLogger("BAM.Pools")
     qh = logging.handlers.QueueHandler(queue)
     mgrlogger.addHandler(qh)
     mgrlogger.setLevel(logging.DEBUG)
@@ -109,8 +108,8 @@ class ExtractMgr(threading.Thread):
         # cleaner
         fexception = future.exception()
         if fexception:
-            dbgmsg("[EXMGR] {-} exception occurred: " + str(fexception) + \
-            "\ntraceback: " + tb.format_exc(), self.extmgrlogger)
+            self.extmgrlogger.log(logging.DEBUG, "[EXMGR] {-} exception occurred: " + str(fexception) + \
+                "\ntraceback: " + tb.format_exc())
         else:
             job = future.result()
             if job is not None:
@@ -119,22 +118,22 @@ class ExtractMgr(threading.Thread):
                 # it from deliverables, otherwise, send to DBMgr
                 ncabdir = self.pdir + "\\nestedCabs"
                 if ncabdir in job[0][0]:
-                    dbgmsg("[EXMGR] found nested cab, not adding to database", self.extmgrlogger)
+                    self.extmgrlogger.log(logging.DEBUG, "[EXMGR] found nested cab, not adding to database")
                 else:
                     self.dbc.addtask("update", job[0], job[1], job[2], None)
 
                 if self.cleaner is not None:
                     self.cleaner.receivejobset(job[0][0])
-                    dbgmsg("[EXMGR] sent to cleaner: " + str(job[0][0]), self.extmgrlogger)
+                    self.extmgrlogger.log(logging.DEBUG, "[EXMGR] sent to cleaner: " + str(job[0][0]))
                 else:
-                    dbgmsg("[EXMGR] no jobs passed to cleaner", self.extmgrlogger)
+                    self.extmgrlogger.log(logging.DEBUG, "[EXMGR] no jobs passed to cleaner")
             else:
-                dbgmsg("[EXMGR] job did not contain patched binaries or additional updates", self.extmgrlogger)
+                self.extmgrlogger.log(logging.DEBUG, "[EXMGR] job did not contain patched binaries or additional updates")
 
         # if there are no more nested cabs, set the jobsincoming event to allow thread to
         # complete execution
         self.workremaining -= 1
-        dbgmsg("[EXMGR] work remaining: " + str(self.workremaining), self.extmgrlogger)
+        self.extmgrlogger.log(logging.DEBUG, "[EXMGR] work remaining: " + str(self.workremaining))
         if self.workremaining == 0:
             self.jobsincoming.set()
 
@@ -156,7 +155,7 @@ class ExtractMgr(threading.Thread):
         and passes results to cleaner.
         '''
         start = time()
-        dbgmsg("[EXMGR] starting ExMgr", self.extmgrlogger)
+        self.extmgrlogger.log(logging.DEBUG, "[EXMGR] starting ExMgr")
         # search for and add cab files to task queue
         for root, dummy, files, in os.walk(self.pdir):
             for file in files:
@@ -171,29 +170,30 @@ class ExtractMgr(threading.Thread):
         with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, mgrlogger)) as executor:
             while self.workremaining > 0:
                 if not self.jobs:
-                    dbgmsg("[EXMGR] waiting for more extraction jobs. Current jobs:"    \
-                            + str(self.workremaining), self.extmgrlogger)
+                    self.extmgrlogger.log(logging.DEBUG, "[EXMGR] waiting for more extraction jobs. Current jobs:"    \
+                            + str(self.workremaining))
                     self.jobsincoming.wait()
                 while self.jobs:
-                    dbgmsg("[EXMGR] assigning extraction job", self.extmgrlogger)
+                    self.extmgrlogger.log(logging.DEBUG, "[EXMGR] assigning extraction job")
                     if self.localaction:
                         future = executor.submit(self.dbupdate, self.jobs.pop(), \
                                                  self.dest)
                     else:
                         future = executor.submit(self.extracttask, self.jobs.pop(), \
                                                  self.pdir, self.dest)
-                    dbgmsg("[EXMGR] jobs left: " + str(len(self.jobs)) + " " + \
-                           "workremaining " + str(self.workremaining), self.extmgrlogger)
+                    self.extmgrlogger.log(logging.DEBUG, "[EXMGR] jobs left: " + str(len(self.jobs)) + " " + \
+                           "workremaining " + str(self.workremaining))
                     future.add_done_callback(self.requeuetask)
                     future.add_done_callback(self.passresult)
 
                 self.jobsincoming.clear()
 
-        dbgmsg("[EXMGR] **************part 1 done**********************", self.extmgrlogger)
+        self.extmgrlogger.log(logging.DEBUG, "[EXMGR] **************part 1 done**********************")
+        print("[EXMGR] **************part 1 done**********************")
 
         if self.cleaner is not None:
             self.cleaner.donesig()
-        dbgmsg("[EXMGR] done signal sent to cleaner", self.extmgrlogger)
+        self.extmgrlogger.log(logging.DEBUG, "[EXMGR] done signal sent to cleaner")
         self.dbc.donesig()
 
         end = time()
@@ -213,12 +213,15 @@ class ExtractMgr(threading.Thread):
         '''
         verify DB entry
         '''
-        # dbgmsg("[EXMGR] Verifying entry for " + src, logger)
+        logmsg = "[EXMGR] Verifying entry for " + src
+        logger.log(logging.DEBUG, logmsg)
+
         filepath = str(Path(src).resolve())
 
         if wsuse_db.dbentryexist(globs.DBCONN.cursor(),     \
                                 globs.UPDATEFILESDBNAME, sha256, sha512):
-            dbgmsg("[EXMGR] item " + filepath + " already exists in db, skipping", logger)
+            logmsg = "[EXMGR] item " + filepath + " already exists in db, skipping"
+            logger.log(logging.DEBUG, logmsg)
             return False
         return True
 
@@ -228,15 +231,17 @@ class ExtractMgr(threading.Thread):
         Call expand.exe to get a listing of files within a CAB/MSU
         '''
         result = None
-        # dbgmsg("[EXMGR] Listing " + str(src) + " CAB contents", logger)
+        logmsg = "[EXMGR] Listing " + str(src) + " CAB contents"
+        logger.log(logging.DEBUG, logmsg)
         try:
             args = "expand -D " + str(src)
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as pexp:
                 result, dummy = pexp.communicate()
         except subprocess.CalledProcessError as error:
-            dbgmsg("[EXMGR] {-} Listing contents of " + src +
+            logmsg = "[EXMGR] {-} Listing contents of " + src + \
                    " failed with " + str(error.returncode) + " " +  \
-            str(error.stderr), logger)
+                   str(error.stderr)
+            logger.log(logging.DEBUG, logmsg)
             pass
 
         return result
@@ -252,13 +257,16 @@ class ExtractMgr(threading.Thread):
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as pexp:
                 rawstdout, dummy = pexp.communicate()
                 result = rawstdout.decode("ascii")
-            # dbgmsg("[EXMGR] extracted " + extstr + " at " + newdir, logger)
+                logger.log(logging.DEBUG, "testing logging within subprocess of worker")
+            logmsg = "[EXMGR] extracted " + extstr + " at " + newdir
+            logger.log(logging.DEBUG, logmsg)
         except subprocess.CalledProcessError as error:
-            dbgmsg("[EXMGR] {-} extracting " + extstr + " from " + src +    \
+            logmsg = "[EXMGR] {-} extracting " + extstr + " from " + src +    \
                     " failed with " + str(error.returncode) + " " +  \
                     error.output.decode('ascii') + ".\n\n" + \
                     "{-} cmd (" + str(error.cmd) + ") stderr (" + \
-                    str(error.stderr) + ")", logger)
+                    str(error.stderr) + ")"
+            logger.log(logging.DEBUG, logmsg)
             pass
 
         return result
@@ -269,16 +277,18 @@ class ExtractMgr(threading.Thread):
         Call 7z.exe to extract files (if any)
         '''
         result = None
-        dbgmsg("[EXMGR] Performing 7z on " + newpath, logger)
+        logmsg = "[EXMGR] Performing 7z on " + newpath
+        logger.log(logging.DEBUG, logmsg)
         args = "C:\\Program Files\\7-Zip\\7z.exe x -aoa -o" + str(newpath) + " -y " +str(src) + " *.dll *.sys *.exe -r"
         try:
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as p7z:
                 result, dummy = p7z.communicate()
         except subprocess.CalledProcessError as error:
             pass
-            dbgmsg("[EXMGR] {-} extracting, using 7z, from " + src +
-                   " failed with " + str(error.returncode) + " " +  \
-                   error.output.decode('ascii'), logger)
+            logmsg = "[EXMGR] {-} extracting, using 7z, from " + src + \
+                     " failed with " + str(error.returncode) + " " +  \
+                     error.output.decode('ascii')
+            logger.log(logging.DEBUG, logmsg)
         
         return result
 
@@ -289,20 +299,8 @@ class ExtractMgr(threading.Thread):
         and no extraction, only set up update files to be added to dbc.
         Destination is where patched files are.
         '''
-
-        # parent = logging.getLogger("BAM.Pools")
-        # print(str(parent.hasHandlers()))
-        # qh = logging.handlers.QueueHandler(queue)
-        # parent.addHandler(qh)
-        # parent.setLevel(logging.DEBUG)
-
         extlogger = logging.getLogger("BAM.Pools.ExWkr")
         
-
-        # dbgmsg("[EXMGR][DBUP] starting on " + str(src), extlogger)
-        # pid = str(os.getpid())
-        # tid = "[Thread " + str(threading.get_ident()) + "] "
-        # logmsg = "[" + pid + "]" + tid + "[EXMGR][DBUP] starting on " + str(src)
         logmsg = "[EXMGR][DBUP] starting on " + str(src)
         extlogger.log(logging.DEBUG, logmsg)
 
@@ -316,10 +314,6 @@ class ExtractMgr(threading.Thread):
             return hashes
 
         if not (validatecab(str(src)) or ispe(str(src)) or validatezip(str(src))):
-            # dbgmsg("[EXMGR][DBUP] invalid cab/pe/zip", extlogger)
-            # pid = str(os.getpid())
-            # tid = "[Thread " + str(threading.get_ident()) + "] "
-            # logmsg = "[" + pid + "]" + tid + "[EXMGR][DBUP] invalid cab/pe/zip"
             logmsg = "[EXMGR][DBUP] invalid cab/pe/zip"
             extlogger.log(logging.DEBUG, logmsg)
             return deliverables
@@ -338,10 +332,6 @@ class ExtractMgr(threading.Thread):
         # No need to locate nested CABs/MSUs as long the parent update file
         # is found. Revisit if needed
 
-        # dbgmsg("[EXMGR][DBUP] Extraction (DB update only) task completed for " + src, extlogger)
-        # pid = str(os.getpid())
-        # tid = "[Thread " + str(threading.get_ident()) + "] "
-        # logmsg = "[" + pid + "]" + tid + "[EXMGR][DBUP] Extraction (DB update only) task completed for " + src
         logmsg = "[EXMGR][DBUP] Extraction (DB update only) task completed for " + src
         extlogger.log(logging.DEBUG, logmsg)
 
@@ -354,15 +344,7 @@ class ExtractMgr(threading.Thread):
         task for workers to extract contents of .cab file and return
         directory of result to for use by cleaner
         '''
-
-        # parent = logging.getLogger("BAM.Pools")
-        # print(str(parent.hasHandlers()))
-        # qh = logging.handlers.QueueHandler(queue)
-        # parent.addHandler(qh)
-        # parent.setLevel(logging.DEBUG)
-
         extlogger = logging.getLogger("BAM.Pools.ExWkr")
-        
 
         hashes = getfilehashes(src)
 
@@ -373,11 +355,6 @@ class ExtractMgr(threading.Thread):
         if not cls.verifyentry(src, hashes[0], hashes[1], extlogger):
             entryexists = True
 
-        # dbgmsg("[EXMGR] started on " + str(src) + " extracting files to " +
-        #        str(dst), extlogger)
-        # pid = str(os.getpid())
-        # tid = "[Thread " + str(threading.get_ident()) + "] "
-        # logmsg = "[" + pid + "]" + tid + "[EXMGR] started on " + str(src) + " extracting files to " + str(dst)
         logmsg = "[EXMGR] started on " + str(src) + " extracting files to " + str(dst)
         extlogger.log(logging.DEBUG, logmsg)
 
@@ -391,10 +368,6 @@ class ExtractMgr(threading.Thread):
         # it has PE files. Otherwise, skip to other
         # update files.
         if ispe(src):
-            # dbgmsg("[EXMGR] extracting PE file...", extlogger)
-            # pid = str(os.getpid())
-            # tid = "[Thread " + str(threading.get_ident()) + "] "
-            # logmsg = "[" + pid + "]" + tid + "[EXMGR] extracting PE file..."
             logmsg = "[EXMGR] extracting PE file..."
             extlogger.log(logging.DEBUG, logmsg)
 
@@ -411,10 +384,6 @@ class ExtractMgr(threading.Thread):
         else:
 
             if not validatecab(str(src)):
-                # dbgmsg("[EXMGR] invalid file", extlogger)
-                # pid = str(os.getpid())
-                # tid = "[Thread " + str(threading.get_ident()) + "] "
-                # logmsg = "[" + pid + "]" + tid + "[EXMGR] invalid file"
                 logmsg = "[EXMGR] invalid file"
                 extlogger.log(logging.DEBUG, logmsg)
                 return None
@@ -469,10 +438,6 @@ class ExtractMgr(threading.Thread):
                                 ncabdir = Path(ncabdir).resolve()
 
                             except OSError as error:
-                                # dbgmsg("[EXMGR] {-} unable to make nested cab directory: " + str(error), extlogger)
-                                # pid = str(os.getpid())
-                                # tid = "[Thread " + str(threading.get_ident()) + "] "
-                                # logmsg = "[" + pid + "]" + tid + "[EXMGR] {-} unable to make nested cab directory: " + str(error)
                                 logmsg = "[EXMGR] {-} unable to make nested cab directory: " + str(error)
                                 extlogger.log(logging.DEBUG, logmsg)
                                 break
@@ -494,19 +459,9 @@ class ExtractMgr(threading.Thread):
                             # if file is not a cab/msu, remove it since that's all we're interested
                             # in at this point
                             if not validatecab(str(newpath)):
-                                # dbgmsg("[EXMGR] {-} extracttask: " + str(newpath) + " extracted from " + \
-                                #     str(src) +  " is not a validate cab", extlogger)
-                                # pid = str(os.getpid())
-                                # tid = "[Thread " + str(threading.get_ident()) + "] "
-                                # logmsg = "[" + pid + "]" + tid + "[EXMGR] {-} extracttask: " + str(newpath) + " extracted from " + \
-                                #     str(src) +  " is not a validate cab"
                                 logmsg = "[EXMGR] {-} extracttask: " + str(newpath) + " extracted from " + str(src) +  " is not a validate cab"
                                 extlogger.log(logging.DEBUG, logmsg)
 
-                                # dbgmsg("[EXMGR] extracttask: Removing " + str(newpath), extlogger)
-                                # pid = str(os.getpid())
-                                # tid = "[Thread " + str(threading.get_ident()) + "] "
-                                # logmsg = "[" + pid + "]" + tid + "[EXMGR] extracttask: Removing " + str(newpath)
                                 logmsg = "[EXMGR] extracttask: Removing " + str(newpath)
                                 extlogger.log(logging.DEBUG, logmsg)
 
@@ -514,17 +469,12 @@ class ExtractMgr(threading.Thread):
 
                                 continue
 
-                            # dbgmsg("[EXMGR] Creating " + str(newpath) + " for new thread...", extlogger)
                             logmsg = "[EXMGR] Creating " + str(newpath) + " for new thread..."
                             extlogger.log(logging.DEBUG, logmsg)
 
                             # return new location of extracted cab for addition to job queue
                             deliverables[0][1].append(str(newpath))
 
-        # dbgmsg("[EXMGR] Extraction task completed for " + src, extlogger)
-        # pid = str(os.getpid())
-        # tid = "[Thread " + str(threading.get_ident()) + "] "
-        # logmsg = "[" + pid + "]" + tid + "[EXMGR] Extraction task completed for " + src
         logmsg = "[EXMGR] Extraction task completed for " + src
         extlogger.log(logging.DEBUG, logmsg)
         return deliverables
@@ -580,8 +530,8 @@ class CleanMgr(threading.Thread):
         '''
         fexception = future.exception()
         if fexception:
-            dbgmsg("[CLNMGR] {-} exception occurred: " + str(fexception) + \
-            "\ntraceback: " + tb.format_exc(), self.clnmgrlogger)
+            self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] {-} exception occurred: " + str(fexception) + \
+            "\ntraceback: " + tb.format_exc())
         else:
             result = future.result()
             if not result is None:
@@ -595,7 +545,7 @@ class CleanMgr(threading.Thread):
                     # /debugger/symchk-command-line-options
                     # in the DBG file options.
                     self.symmgr.receivejobset(str(result[0][0]))
-                    dbgmsg("[CLNMGR] items passed to symmgr: " + str(result[0][0]), self.clnmgrlogger)
+                    self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] items passed to symmgr: " + str(result[0][0]))
 
                 self.dbc.addtask("binary", result[0], result[1], result[2], result[3])
 
@@ -603,14 +553,14 @@ class CleanMgr(threading.Thread):
         '''
         spawns, manages, and tasks workers to perform cleaning functionalities
         '''
-        dbgmsg("[CLNMGR] ClnMgr starting", self.clnmgrlogger)
+        self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] ClnMgr starting")
         start_time = time()
         # setup workers and Executor
         global mgrlogger
         with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, mgrlogger)) as executor:
             while not self.alldone:
                 if not self.jobs:
-                    dbgmsg("[CLNMGR] waiting for more cleaning jobs", self.clnmgrlogger)
+                    self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] waiting for more cleaning jobs")
                     self.jobsready.wait()
 
                 # take item from jobs and assign it to a worker
@@ -619,20 +569,21 @@ class CleanMgr(threading.Thread):
                     for root, dummy, files in os.walk(jobdir):
                         for file in files:
                             filepath = Path(os.path.join(root, file)).resolve()
-                            dbgmsg("[CLNMGR] assigning cleaning job for " + str(filepath), self.clnmgrlogger)
+                            self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] assigning cleaning job for " + str(filepath))
                             
                             future = executor.submit(self.cleantask, str(filepath))
                             future.add_done_callback(self.passresult)
 
                 self.jobsready.clear()
 
-                dbgmsg("[CLNMGR] items left in cleanmgr queue: " + str(len(self.jobs)), self.clnmgrlogger)
+                self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] items left in cleanmgr queue: " + str(len(self.jobs)))
 
-        dbgmsg("[CLNMGR] *************part 2 done*****************", self.clnmgrlogger)
+        self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] *************part 2 done*****************")
+        print("[CLNMGR] **************part 2 done**********************")
 
         if self.symmgr is not None:
             self.symmgr.donesig()
-        dbgmsg("[CLNMGR] done signal sent to symmgr", self.clnmgrlogger)
+        self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] done signal sent to symmgr")
         self.dbc.donesig()
 
         endtime = time()
@@ -645,18 +596,10 @@ class CleanMgr(threading.Thread):
         task to clean up folder before submitting jobs for symbol search
         if item is removed in cleaning, None is returned, else return item
         '''
-
-        # parent = logging.getLogger()
-        # qh = logging.handlers.QueueHandler(queue)
-        # parent.addHandler(qh)
-        # parent.setLevel(logging.DEBUG)
-
-
         clnlogger = logging.getLogger("BAM.Pools.ClnWkr")
         
         results = None
 
-        # dbgmsg("[CLNMGR] Starting on " + str(jobfile), clnlogger)
         logmsg = "[CLNMGR] Starting on " + str(jobfile)
         clnlogger.log(logging.DEBUG, logmsg)
 
@@ -674,7 +617,6 @@ class CleanMgr(threading.Thread):
                 return results # is None at this point in time
             else:
                 pass
-                # dbgmsg("[CLNMGR] continuing forward with " + str(jobfile), clnlogger)
                 logmsg = "[CLNMGR] continuing forward with " + str(jobfile)
                 clnlogger.log(logging.DEBUG, logmsg)
 
@@ -691,7 +633,6 @@ class CleanMgr(threading.Thread):
             try:
                 unpefile = pefile.PE(jobfile)
             except pefile.PEFormatError as peerror:
-                # dbgmsg("[WSUS_DB] skipping " + str(jobfile) + " due to exception: " + peerror.value, clnlogger)
                 logmsg = "[WSUS_DB] skipping " + str(jobfile) + " due to exception: " + peerror.value
                 clnlogger.log(logging.DEBUG, logmsg)
                 return results
@@ -790,23 +731,19 @@ class CleanMgr(threading.Thread):
         else:
             # if jobfile is not a PE, then check if it's a cab. If not a cab, remove it.
             if not validatecab(str(jobfile)):
-                # dbgmsg("[CLNMGR] cleantask: Removing " + str(jobfile), clnlogger)
                 logmsg = "[CLNMGR] cleantask: Removing " + str(jobfile)
                 clnlogger.log(logging.DEBUG, logmsg)
 
                 rmfile(jobfile)
 
-                # dbgmsg("[CLNMGR] " + str(jobfile) + " removed, not PE or cab file", clnlogger)
                 logmsg = "[CLNMGR] " + str(jobfile) + " removed, not PE or cab file"
                 clnlogger.log(logging.DEBUG, logmsg)
             else:
                 pass
-                # dbgmsg("[CLNMGR] " + str(jobfile) + " is nested cab, skipping", clnlogger)
                 logmsg = "[CLNMGR] " + str(jobfile) + " is nested cab, skipping"
                 clnlogger.log(logging.DEBUG, logmsg)
             return results
 
-        # dbgmsg("[CLNMGR] completed one cleantask for " + str(jobfile), clnlogger)
         logmsg = "[CLNMGR] completed one cleantask for " + str(jobfile)
         clnlogger.log(logging.DEBUG, logmsg)
 
@@ -862,14 +799,14 @@ class SymMgr(threading.Thread):
         '''
         fexception = future.exception()
         if fexception:
-            dbgmsg("[SYMMGR] {-} exception occurred: " + str(fexception) + "\ntraceback: " + \
-                tb.format_exc(), self.symmgrlogger)
+            self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] {-} exception occurred: " + str(fexception) + "\ntraceback: " + \
+                tb.format_exc())
         else:
             results = future.result()
             if results is not None:
                 self.dbc.addtask("symbol", results[0], results[1], results[2], results[3])
             else:
-                dbgmsg("[SYMMGR] no symbols found", self.symmgrlogger)
+                self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] no symbols found")
 
     def run(self):
         '''
@@ -881,21 +818,22 @@ class SymMgr(threading.Thread):
         with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, mgrlogger)) as executor:
             while not self.alldone:
                 if not self.jobs:
-                    dbgmsg("[SYMMGR] waiting for more symbols jobs", self.symmgrlogger)
+                    self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] waiting for more symbols jobs")
                     self.jobsready.wait()
 
                 # take item from jobs and assign to workers
                 while self.jobs:
-                    dbgmsg("[SYMMGR] assigning symbol job", self.symmgrlogger)
+                    self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] assigning symbol job")
                     future = executor.submit(self.symtask, self.jobs.pop(), self.symserver, \
                         self.symdest, self.symlocal)
                     future.add_done_callback(self.makedbrequest)
 
                 self.jobsready.clear()
 
-                dbgmsg("[SYMMGR] items left in symmgr queue: " + str(len(self.jobs)), self.symmgrlogger)
+                self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] items left in symmgr queue: " + str(len(self.jobs)))
 
-        dbgmsg("[SYMMGR] *************part 3 done*****************", self.symmgrlogger)
+        self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] *************part 3 done*****************")
+        print("[SYMMGR] **************part 3 done**********************")
 
         self.dbc.donesig()
 
@@ -909,12 +847,6 @@ class SymMgr(threading.Thread):
         perform symbol search for symbols of jobfile. If there are no symbols or symbols found
         are already in db, discard results. Else, return found symbols
         '''
-
-        # parent = logging.getLogger()
-        # qh = logging.handlers.QueueHandler(queue)
-        # parent.addHandler(qh)
-        # parent.setLevel(logging.DEBUG)
-
         symlogger = logging.getLogger("BAM.Pools.SymWkr")
 
         hashes = getfilehashes(jobfile)
@@ -928,7 +860,6 @@ class SymMgr(threading.Thread):
             return None
 
         result = None
-        # dbgmsg("[SYMMGR].. Getting SYM for (" + str(jobfile) + ")", symlogger)
         logmsg = "[SYMMGR].. Getting SYM for (" + str(jobfile) + ")"
         symlogger.log(logging.DEBUG, logmsg)
         servers = ""
@@ -948,7 +879,6 @@ class SymMgr(threading.Thread):
             stdoutsplit = str(pstdout.decode("ascii")).split("\r\n")
             stderrsplit = str(pstderr.decode("ascii")).split("\r\n")
 
-            # dbgmsg("[SYMMGR] Attempt to obtain symbols for " + str(jobfile) + " complete", symlogger)
             logmsg = "[SYMMGR] Attempt to obtain symbols for " + str(jobfile) + " complete"
             symlogger.log(logging.DEBUG, logmsg)
 
@@ -956,10 +886,9 @@ class SymMgr(threading.Thread):
             try:
                 unpefile = pefile.PE(jobfile)
             except pefile.PEFormatError as peerror:
-                # dbgmsg("[WSUS_DB] Caught: PE error " + str(peerror) + ". File: " + jobfile, symlogger)
                 logmsg = "[WSUS_DB] Caught: PE error " + str(peerror) + ". File: " + jobfile
                 symlogger.log(logging.DEBUG, logmsg)
-                return False
+                return result
 
             infolist['signature'] = getpesigwoage(unpefile)
             infolist['arch'] = getpearch(unpefile)
@@ -969,7 +898,7 @@ class SymMgr(threading.Thread):
             stderrsplit.append(symserver)
             result = ((str(jobfile), stderrsplit, stdoutsplit), hashes[0], hashes[1], infolist)
 
-        # dbgmsg("[SYMMGR] completed symtask for " + str(jobfile), symlogger)
+
         logmsg = "[SYMMGR] completed symtask for " + str(jobfile)
         symlogger.log(logging.DEBUG, logmsg)
         print("end of symtask")
@@ -1004,8 +933,8 @@ class DBMgr(threading.Thread):
         '''
         task = (optype, jobtuple, sha256, sha512, infolist)
         self.jobqueue.put(task)
-        dbgmsg("[DBMGR] " + optype + " task added to queue. Queue at " + \
-               str(self.jobqueue.qsize()) + " tasks.", self.dblogger)
+        self.dblogger.log(logging.DEBUG, "[DBMGR] " + optype + " task added to queue. Queue at " + \
+               str(self.jobqueue.qsize()) + " tasks.")
         self.jobsig.set()
 
     def writeupdate(self, file, sha256, sha512):
@@ -1013,7 +942,7 @@ class DBMgr(threading.Thread):
         performs writes to DB for Update files
         should use function in wsuse_db
         '''
-        dbgmsg("[DBMGR] writing update for (" + str(file) + ")", self.dblogger)
+        self.dblogger.log(logging.DEBUG, "[DBMGR] writing update for (" + str(file) + ")")
         wsuse_db.writeupdate(file, sha256, sha512, conn=self.dbconn)
 
     def writebinary(self, file, sha256, sha512, infolist):
@@ -1021,7 +950,7 @@ class DBMgr(threading.Thread):
         performs write updates to db for Binary files
         should use function in wsuse_db
         '''
-        dbgmsg("[DBMGR] writing binary for (" + str(file) + ")", self.dblogger)
+        self.dblogger.log(logging.DEBUG, "[DBMGR] writing binary for (" + str(file) + ")")
         wsuse_db.writebinary(file, sha256, sha512, infolist, conn=self.dbconn)
 
     def writesym(self, file, symchkerr, symchkout, sha256, sha512, infolist):
@@ -1029,7 +958,7 @@ class DBMgr(threading.Thread):
         performs write updates to db for Symbol Files
         should use function in wsuse_db
         '''
-        dbgmsg("[DBMGR] writing symbol for (" + str(file) + ")", self.dblogger)
+        self.dblogger.log(logging.DEBUG, "[DBMGR] writing symbol for (" + str(file) + ")")
 
         wsuse_db.writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, self.exdest, conn=self.dbconn)
 
@@ -1046,12 +975,12 @@ class DBMgr(threading.Thread):
         '''
         handles requests from other Mgrs to write to DB
         '''
-        dbgmsg("[DBMGR] DBMgr starting", self.dblogger)
+        self.dblogger.log(logging.DEBUG, "[DBMGR] DBMgr starting")
         start_time = time()
 
         while self.donecount < 3:
             if self.jobqueue.empty():
-                dbgmsg("[DBMGR] waiting for more database jobs", self.dblogger)
+                self.dblogger.log(logging.DEBUG, "[DBMGR] waiting for more database jobs")
                 self.jobsig.wait()
 
             # once signal received, take tasks off queue and process
@@ -1059,7 +988,7 @@ class DBMgr(threading.Thread):
 
                 # For every 5k queries, end transaction, commit, then restart
                 # transaction
-                dbgmsg("[DBMGR][DBUP] " + str(self.dbrecordscnt) + " records ready...", self.dblogger)
+                self.dblogger.log(logging.DEBUG, "[DBMGR][DBUP] " + str(self.dbrecordscnt) + " records ready...")
 
                 if self.dbrecordscnt == 0:
                     # this case is only ran once
@@ -1071,7 +1000,7 @@ class DBMgr(threading.Thread):
                     self.dbrecordscnt = 0
 
                 task = self.jobqueue.get()
-                dbgmsg("[DBMGR] assigning database job: " + str(task[0]), self.dblogger)
+                self.dblogger.log(logging.DEBUG, "[DBMGR] assigning database job: " + str(task[0]))
 
                 if task[0] == "update":
                     self.dbrecordscnt += 1
@@ -1083,9 +1012,9 @@ class DBMgr(threading.Thread):
                     self.dbrecordscnt += 1
                     self.writesym(task[1][0], task[1][1], task[1][2], task[2], task[3], task[4])
                 else:
-                    dbgmsg("[DBMGR] task unrecognized", self.dblogger)
+                    self.dblogger.log(logging.DEBUG, "[DBMGR] task unrecognized")
 
-                dbgmsg("[DBMGR] task done, queue at " + str(self.jobqueue.qsize()) + " tasks", self.dblogger)
+                self.dblogger.log(logging.DEBUG, "[DBMGR] task done, queue at " + str(self.jobqueue.qsize()) + " tasks")
 
                 if self.jobsig.is_set():
                     self.jobsig.clear()
@@ -1094,4 +1023,5 @@ class DBMgr(threading.Thread):
         endtime = time()
         elapsedtime = endtime-start_time
         print("elapsed time for part 4: " + str(elapsedtime))
-        dbgmsg("[DBMGR] ****************everything done********************", self.dblogger)
+        self.dblogger.log(logging.DEBUG, "[DBMGR] ****************everything done********************")
+        print("[DMMGR] **************everything done**********************")

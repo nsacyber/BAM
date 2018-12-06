@@ -5,7 +5,7 @@ this file contains global values and variables used throughout the application
 # Imports
 #***************************************
 import sqlite3
-
+import multiprocessing as mp
 #***************************************
 # Global Constants
 #***************************************
@@ -64,3 +64,5 @@ SYMBOLFILETSTMT = ("CREATE TABLE IF NOT EXISTS SymbolFiles " +
 
 # enable or disable debug output
 VERBOSITY = False
+
+GLOBQUEUE = mp.Queue(-1)

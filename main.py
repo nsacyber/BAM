@@ -17,7 +17,7 @@ import logging
 
 import multiprocessing as mp
 
-from support.utils import dbgmsg, exitfunction, util_logconfig
+from support.utils import exitfunction, util_logconfig
 
 from db.wsuse_db import construct_tables, db_logconfig
 
@@ -152,10 +152,10 @@ def checkdirectoryexist(direxist):
             os.mkdir(direxist)
             result = True
         except FileExistsError as ferror:
-            dbgmsg("[MAIN] {-} unable to make symbol destination directory " + \
-                    str(ferror.winerror) + " " +  str(ferror.strerror), mainlogger)
+            mainlogger.log(logging.DEBUG, "[MAIN] {-} unable to make symbol destination directory " + \
+                    str(ferror.winerror) + " " +  str(ferror.strerror))
             pass
-    dbgmsg("[MAIN] Directory ("+ direxist + ") results were " + str(int(result)), mainlogger)
+    mainlogger.log(logging.DEBUG, "[MAIN] Directory ("+ direxist + ") results were " + str(int(result)))
     return result
 
 if __name__ == "__main__":
@@ -210,7 +210,7 @@ if __name__ == "__main__":
             checkdirectoryexist(ARGS.symdestpath)
 
         if not construct_tables(globs.DBCONN):
-            dbgmsg("[MAIN] Problem creating DB tables", mainlogger)
+            mainlogger.log(logging.DEBUG, "[MAIN] Problem creating DB tables")
             globs.DBCONN.close()
             exit()
 
@@ -274,7 +274,7 @@ if __name__ == "__main__":
         # Only create the SymbolFiles Table
         if ARGS.getsymbols:
             if not construct_tables(globs.DBCONN):
-                dbgmsg("[MAIN] Problem creating DB tables", mainlogger)
+                mainlogger.log(logging.DEBUG, "[MAIN] Problem creating DB tables")
                 globs.DBCONN.close()
                 exit()
 
@@ -308,7 +308,7 @@ if __name__ == "__main__":
         # Only create the PatchedFiles Table
         elif ARGS.getpatches:
             if not construct_tables(globs.DBCONN):
-                dbgmsg("[MAIN] Problem creating DB tables", mainlogger)
+                mainlogger.log(logging.DEBUG, "[MAIN] Problem creating DB tables")
                 globs.DBCONN.close()
                 exit()
 
@@ -339,7 +339,7 @@ if __name__ == "__main__":
         # Only create the UpdateFiles Table
         elif ARGS.getupdates:
             if not construct_tables(globs.DBCONN):
-                dbgmsg("[MAIN] Problem creating DB tables", mainlogger)
+                mainlogger.log(logging.DEBUG, "[MAIN] Problem creating DB tables")
                 globs.DBCONN.close()
                 exit()
 
@@ -369,9 +369,5 @@ if __name__ == "__main__":
                                               GETSYMMIN))
 
     globs.DBCONN.close()
-    # while not globqueue.empty():
-    #     globqueue.get()
-    # globqueue.close()
-    # globqueue.join_thread()
     globqueue.put_nowait(None)
     loggerProcess.join()
