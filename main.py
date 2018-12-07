@@ -28,7 +28,7 @@ import globs
 import BamLogger
 # ************************************************************
 # Requirements:
-#     Minimal Python Version: 3.6
+#     Minimal Python Version: 3.7
 #     SQLite
 #     pefile
 #     Windows SDK/WDK (expand.exe and symcheck.exe)
@@ -57,8 +57,8 @@ import BamLogger
 # ************************************************************
 
 # Verify Python version
-if sys.version_info[0] < 3 and sys.version_info[1] >= 6:
-    sys.exit("This script requires at least Python version 3.6")
+if sys.version_info[0] < 3 and sys.version_info[1] >= 7:
+    sys.exit("This script requires at least Python version 3.7")
 
 
 def displayhelp(parserh):
@@ -73,11 +73,30 @@ def parsecommandline(parser):
     parses arguments given to commandline
     '''
     parser.add_argument(
+        "-c", "--createdbonly", action='store_true')
+    parser.add_argument(
+        "-gp", "--getpatches",
+        help="Create/Update patches DB information for symbol files " +
+        "(requires --createdbonly and cannot be used with any other \"get\" option)",
+        action='store_true')
+    parser.add_argument(
+        "-gs", "--getsymbols",
+        help="Create/Update symbol DB information for extracted PE files " +
+        "(requires --createdbonly and cannot be used with any other \"get\" option)",
+        action='store_true')
+    parser.add_argument(
+        "-gu", "--getupdates",
+        help="Create/Update update file DB information for update files " +
+        "(requires --createdbonly and cannot be used with any other \"get\" option)",
+        action='store_true')
+    parser.add_argument(
         "-f", "--file", help="Path to single patch file. Must be given -x or --extract as well.")
     parser.add_argument(
-        "-x", "--extract", action='store_true')
-    parser.add_argument(
-        "-c", "--createdbonly", action='store_true')
+        "-m", "--module",
+        help="specify module to invoke",
+        nargs="?",
+        type=str,
+        default="updatefilesymbols")
     parser.add_argument(
         "-p", "--patchpath", help="Path to location where Windows updates " +
         "(CAB/MSU) are stored. Must be given -x or --extract as well.")
@@ -87,21 +106,6 @@ def parsecommandline(parser):
         nargs="?",
         type=str,
         default="extractedPatches")
-    parser.add_argument(
-        "-gs", "--getsymbols",
-        help="Create/Update symbol DB information for extracted PE files " +
-        "(requires --createdbonly and cannot be used with any other \"get\" option)",
-        action='store_true')
-    parser.add_argument(
-        "-gp", "--getpatches",
-        help="Create/Update patches DB information for symbol files " +
-        "(requires --createdbonly and cannot be used with any other \"get\" option)",
-        action='store_true')
-    parser.add_argument(
-        "-gu", "--getupdates",
-        help="Create/Update update file DB information for update files " +
-        "(requires --createdbonly and cannot be used with any other \"get\" option)",
-        action='store_true')
     parser.add_argument(
         "-sl", "--symlocal",
         help=("Path to location where local symbols are be stored. "
@@ -124,11 +128,7 @@ def parsecommandline(parser):
         type=str,
         default="updatefilesymbols")
     parser.add_argument(
-        "-m", "--module",
-        help="specify module to invoke",
-        nargs="?",
-        type=str,
-        default="updatefilesymbols")
+        "-x", "--extract", action='store_true')
     parser.add_argument(
         "-v", "--verbose",
         action='store_true',
