@@ -55,14 +55,14 @@ PEARCH = {
     pefile.MACHINE_TYPE['IMAGE_FILE_MACHINE_CEE']: 'CEE'
 }
 
-utilLogger = logging.getLogger("BAM.util")
+_utilLogger = logging.getLogger("BAM.util")
 
 def util_logconfig(queue):
-    global utilLogger
+    global _utilLogger
 
     qh = logging.handlers.QueueHandler(queue)
-    utilLogger.addHandler(qh)
-    utilLogger.setLevel(logging.DEBUG)
+    _utilLogger.addHandler(qh)
+    _utilLogger.setLevel(logging.DEBUG)
 
 #***********************************************
 # Functions
@@ -94,19 +94,19 @@ def writeperm(pathtodir):
     is used to allow write permissions so that files and folders can be deleted
     later.
     '''
-    global utilLogger
+    global _utilLogger
     for root, dirs, files in os.walk(pathtodir, topdown=True):
         for item in files:
             try:
                 os.chmod(os.path.join(root, item), stat.S_IWRITE)
             except FileNotFoundError as dummy:
-                utilLogger.log(logging.DEBUG, "writeperm: cannot find " + str(item))
+                _utilLogger.log(logging.DEBUG, "writeperm: cannot find " + str(item))
                 pass
         for folder in dirs:
             try:
                 os.chmod(os.path.join(root, folder), stat.S_IWRITE)
             except FileNotFoundError as dummy:
-                utilLogger.log(logging.DEBUG, "writeperm: cannot find " + str(folder))
+                _utilLogger.log(logging.DEBUG, "writeperm: cannot find " + str(folder))
                 pass
     os.chmod(pathtodir, stat.S_IWRITE)
 
@@ -175,8 +175,8 @@ def getpesigwoage(unknownpefile):
                                    data4h, data5h, data6h)
                     guidstr = "{" + guidstr.upper() + "}"
     else:
-        global utilLogger
-        utilLogger.log(logging.DEBUG, "-- GUID not found....")
+        global _utilLogger
+        _utilLogger.log(logging.DEBUG, "-- GUID not found....")
         pass
 
     return guidstr
@@ -199,8 +199,8 @@ def getpeage(unknownpefile):
 
                 age = attrage
     else:
-        global utilLogger
-        utilLogger.log(logging.DEBUG, "-- Age not found....")
+        global _utilLogger
+        _utilLogger.log(logging.DEBUG, "-- Age not found....")
         pass
     return age
 
@@ -227,8 +227,8 @@ def getpepdbfilename(unknownpefile):
                     pass
                 return pdbfilename
     else:
-        global utilLogger
-        utilLogger.log(logging.DEBUG, "-- Pdbfilename not found....")
+        global _utilLogger
+        _utilLogger.log(logging.DEBUG, "-- Pdbfilename not found....")
         pass
     return pdbfilename
 
@@ -280,12 +280,12 @@ def validatecab(unknownfile):
     '''
     validate CAB file
     '''
-    global utilLogger
+    global _utilLogger
     if "wsusscan.cab" in unknownfile.lower() or     \
         "wsusscn2.cab" in unknownfile.lower() or    \
         "wuresdist.cab" in unknownfile.lower() or   \
             "muauth.cab" in unknownfile.lower():
-        utilLogger.log(logging.DEBUG, "{-} Ignoring " + unknownfile + "...")
+        _utilLogger.log(logging.DEBUG, "{-} Ignoring " + unknownfile + "...")
         return False
     elif unknownfile.endswith(".cab") or unknownfile.endswith(".msu"):
         try:
@@ -298,7 +298,7 @@ def validatecab(unknownfile):
                 else:
                     return True
         except FileNotFoundError as ferror:
-            utilLogger.log(logging.DEBUG, "{-} validatecab: Could not open " + str(unknownfile) + " " + \
+            _utilLogger.log(logging.DEBUG, "{-} validatecab: Could not open " + str(unknownfile) + " " + \
                    str(ferror.strerror) + " (" + str(ferror.winerror) + ")")
             return False
     else:
@@ -321,8 +321,8 @@ def validatezip(unknownfile):
                 else:
                     return True
         except FileNotFoundError as ferror:
-            global utilLogger
-            utilLogger.log(logging.DEBUG, "{-} validatezip: Could not open " + str(unknownfile) + " " + \
+            global _utilLogger
+            _utilLogger.log(logging.DEBUG, "{-} validatezip: Could not open " + str(unknownfile) + " " + \
                    str(ferror.strerror) + " (" + str(ferror.winerror) + ")")
             return False
     else:
@@ -343,8 +343,8 @@ def getfilehashes(jobfile):
             buf = item.read()
             hashes = (sha256(buf).hexdigest(), sha512(buf).hexdigest())
     except FileNotFoundError as ferror:
-        global utilLogger
-        utilLogger.log(logging.DEBUG, "{-} getfilehashes: Could not open " + str(jobfile) + " " + \
+        global _utilLogger
+        _utilLogger.log(logging.DEBUG, "{-} getfilehashes: Could not open " + str(jobfile) + " " + \
             str(ferror.strerror) + " (" + str(ferror.winerror) + ")")
         return None
 

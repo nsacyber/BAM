@@ -42,14 +42,14 @@ from dependencies.pefile import pefile
 #****************************************************
 # Local Variables
 #****************************************************
-mgrlogger = logging.getLogger("BAM.Pools")
+_mgrlogger = logging.getLogger("BAM.Pools")
 
 def mgr_logconfig(queue):
-    global mgrlogger
+    global _mgrlogger
 
     qh = logging.handlers.QueueHandler(queue)
-    mgrlogger.addHandler(qh)
-    mgrlogger.setLevel(logging.DEBUG)
+    _mgrlogger.addHandler(qh)
+    _mgrlogger.setLevel(logging.DEBUG)
 
 def wkr_logconfig(queue, logger):
     parent = logger
@@ -166,8 +166,8 @@ class ExtractMgr(threading.Thread):
 
         # don't wait for results to pile up, task workers and send off to cleaner
         # and dbc as they come in.
-        global mgrlogger
-        with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, mgrlogger)) as executor:
+        global _mgrlogger
+        with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, _mgrlogger)) as executor:
             while self.workremaining > 0:
                 if not self.jobs:
                     self.extmgrlogger.log(logging.DEBUG, "[EXMGR] waiting for more extraction jobs. Current jobs:"    \
@@ -544,7 +544,8 @@ class CleanMgr(threading.Thread):
                     # https://docs.microsoft.com/en-us/windows-hardware/drivers
                     # /debugger/symchk-command-line-options
                     # in the DBG file options.
-                    self.symmgr.receivejobset(str(result[0][0]))
+                    jobitem = (str(result[0][0]), result[1], result[2])
+                    self.symmgr.receivejobset(jobitem)
                     self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] items passed to symmgr: " + str(result[0][0]))
 
                 self.dbc.addtask("binary", result[0], result[1], result[2], result[3])
@@ -556,8 +557,8 @@ class CleanMgr(threading.Thread):
         self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] ClnMgr starting")
         start_time = time()
         # setup workers and Executor
-        global mgrlogger
-        with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, mgrlogger)) as executor:
+        global _mgrlogger
+        with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, _mgrlogger)) as executor:
             while not self.alldone:
                 if not self.jobs:
                     self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] waiting for more cleaning jobs")
@@ -610,11 +611,11 @@ class CleanMgr(threading.Thread):
             if hashes is None:
                 return hashes
 
-            # if PE is already in db with symbols obtained,
-            # do not retask job to symbol manager, otherwise continue normally
             if wsuse_db.dbentryexistwithsymbols(globs.DBCONN.cursor(),     \
-                                    globs.PATCHEDFILESDBNAME, hashes[0], hashes[1]):
-                return results # is None at this point in time
+                                globs.PATCHEDFILESDBNAME, hashes[0], hashes[1]):
+                # if PE is already in db with symbols obtained,
+                # do not retask job to symbol manager, return None instead
+                return results
             else:
                 pass
                 logmsg = "[CLNMGR] continuing forward with " + str(jobfile)
@@ -814,8 +815,8 @@ class SymMgr(threading.Thread):
         '''
         start_time = time()
         # setup workers and Executor
-        global mgrlogger
-        with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, mgrlogger)) as executor:
+        global _mgrlogger
+        with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, _mgrlogger)) as executor:
             while not self.alldone:
                 if not self.jobs:
                     self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] waiting for more symbols jobs")
@@ -842,22 +843,14 @@ class SymMgr(threading.Thread):
         print("elapsed time for part 3: " + str(elapsedtime))
 
     @classmethod
-    def symtask(cls, jobfile, symserver, symdest, symlocal):
+    def symtask(cls, jobitem, symserver, symdest, symlocal):
         '''
         perform symbol search for symbols of jobfile. If there are no symbols or symbols found
         are already in db, discard results. Else, return found symbols
         '''
         symlogger = logging.getLogger("BAM.Pools.SymWkr")
-
-        hashes = getfilehashes(jobfile)
-
-        if hashes is None:
-            return hashes
-
-        # Check if PE file's symbols were obtained
-        if wsuse_db.dbentryexistwithsymbols(globs.DBCONN.cursor(),     \
-                                globs.PATCHEDFILESDBNAME, hashes[0], hashes[1]):
-            return None
+        jobfile = jobitem[0]
+        hashes = (jobfile[1], jobfile[2])
 
         result = None
         logmsg = "[SYMMGR].. Getting SYM for (" + str(jobfile) + ")"
@@ -901,7 +894,6 @@ class SymMgr(threading.Thread):
 
         logmsg = "[SYMMGR] completed symtask for " + str(jobfile)
         symlogger.log(logging.DEBUG, logmsg)
-        print("end of symtask")
         return result
 
 

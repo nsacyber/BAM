@@ -15,7 +15,6 @@ def log_listener(queue, config):
     while True:
         try:
             item = queue.get()
-            # print(str(item)) # , file=open("queueditems.txt", "a")
             if item is None:
                 break
             logger = logging.getLogger(item.name)
@@ -24,5 +23,3 @@ def log_listener(queue, config):
             import sys
             print("error occurred while handling item from queue: \n" + str(e), file=sys.stderr)
     print("queue loop broken")
-    # globs.QUEUE.close()
-    # globs.QUEUE.join_thread()

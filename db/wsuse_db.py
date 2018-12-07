@@ -29,14 +29,14 @@ import BamLogger
 #***********************************************
 # Local Variables
 #***********************************************
-wdblogger = logging.getLogger("BAM.wsuse_db")
+_wdblogger = logging.getLogger("BAM.wsuse_db")
 
 def db_logconfig(queue):
-    global wdblogger
+    global _wdblogger
 
     qh = logging.handlers.QueueHandler(queue)
-    wdblogger.addHandler(qh)
-    wdblogger.setLevel(logging.DEBUG)
+    _wdblogger.addHandler(qh)
+    _wdblogger.setLevel(logging.DEBUG)
 
 #***********************************************
 # Functions
@@ -80,13 +80,13 @@ def dbentryexist(dbcursor, dbname, sha256, sha512):
         (sha256, sha512))
     check = dbcursor.fetchone()
 
-    global wdblogger
+    global _wdblogger
 
     if check is None:
-        wdblogger.log(logging.DEBUG, "[WSUS_DB] did not find " + sha256 + " entry in " + dbname)
+        _wdblogger.log(logging.DEBUG, "[WSUS_DB] did not find " + sha256 + " entry in " + dbname)
         return False
 
-    wdblogger.log(logging.DEBUG, "[WSUS_DB] found " + sha256 + "entry in DB")
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] found " + sha256 + "entry in DB")
     return True
 
 def dbentryexistwithsymbols(dbcursor, dbname, sha256, sha512):
@@ -100,16 +100,16 @@ def dbentryexistwithsymbols(dbcursor, dbname, sha256, sha512):
         (sha256, sha512))
     check = dbcursor.fetchone()
 
-    global wdblogger
+    global _wdblogger
 
     if check is None:
-        wdblogger.log(logging.DEBUG, "[WSUS_DB] did not find " + sha256 + " entry in " + dbname)
+        _wdblogger.log(logging.DEBUG, "[WSUS_DB] did not find " + sha256 + " entry in " + dbname)
         return False
 
     if check["SymbolObtained"] == 0:
         return False
 
-    wdblogger.log(logging.DEBUG, "[WSUS_DB] found " + sha256 + "entry with symbols obtained in DB")
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] found " + sha256 + "entry with symbols obtained in DB")
     return True
 
 def symbolentryexist(dbcursor, dbname, signature, sha256, sha512):
@@ -127,20 +127,20 @@ def symbolentryexist(dbcursor, dbname, signature, sha256, sha512):
         (sha256, sha512))
     check = dbcursor.fetchone()
 
-    global wdblogger
+    global _wdblogger
 
     if check is None:
-        wdblogger.log(logging.DEBUG, "[WSUS_DB] did not find " + signature + " entry in " + dbname)
+        _wdblogger.log(logging.DEBUG, "[WSUS_DB] did not find " + signature + " entry in " + dbname)
         return False
 
-    wdblogger.log(logging.DEBUG, "[WSUS_DB] found " + signature + "entry in DB")
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] found " + signature + "entry in DB")
     return True
 
 def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
     '''
     parse symchk output
     '''
-    global wdblogger
+    global _wdblogger
 
     result = None
     try:
@@ -154,7 +154,7 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
             "PdbDbiAge|Date:)", wholeline):
             hexi = True
     except IndexError as ierror:
-        wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Parsing symchk output part 1: " + str(ierror) + " on " + wholeline)
+        _wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Parsing symchk output part 1: " + str(ierror) + " on " + wholeline)
         return result
 
     if locate in wholeline:
@@ -168,7 +168,7 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
             if re.search(r"^\[SYMCHK\] Age:", wholeline):
                 hexi = True
         except IndexError as ierror:
-            wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Parsing symchk output part 2: " + str(ierror) + " on " + wholeline)
+            _wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Parsing symchk output part 2: " + str(ierror) + " on " + wholeline)
             return None
 
         if "CV:" in wholeline:
@@ -179,14 +179,14 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
             try:
                 result = int(result)
             except ValueError as verror:
-                wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
+                _wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
                         " to an int. " + str(verror))
                 pass
         elif hexi:
             try:
                 result = int(result, 16)
             except ValueError as verror:
-                wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
+                _wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
                        " to an int. " + str(verror))
                 pass
 
@@ -218,10 +218,10 @@ def writeupdate(file, sha256, sha512, \
     '''
     from time import time
 
-    global wdblogger
+    global _wdblogger
     basename = os.path.basename(file)
     dbcursor = conn.cursor()
-    wdblogger.log(logging.DEBUG, "[WSUS_DB] is inserting new file and hash to updateDB")
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] is inserting new file and hash to updateDB")
 
     dbcursor.execute(
         "INSERT INTO " + dbname + " VALUES (" + "?," * 8 + "?)",
@@ -252,14 +252,14 @@ def writebinary(file, sha256, sha512, infolist,  \
     updates database if already in existence
     '''
     basename = os.path.basename(file)
-    global wdblogger
+    global _wdblogger
 
-    wdblogger.log(logging.DEBUG, "[WSUS_DB] !! Working on ")
-    wdblogger.log(logging.DEBUG, "[WSUS_DB] " + str(infolist))
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] !! Working on ")
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] " + str(infolist))
 
     dbcursor = conn.cursor()
 
-    wdblogger.log(logging.DEBUG, "[WSUS_DB] inserting new file and hash")
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] inserting new file and hash")
     dbcursor.execute(
         "INSERT INTO " + dbname + " VALUES (" + "?," * 31 + "?)",
         # FileName,OperatingSystemVersion,Architecture,Signature,SHA256
@@ -334,7 +334,7 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
         "PdbSignature": '',
         "PdbDbiAge": 0
         }
-    global wdblogger
+    global _wdblogger
 
     for line in symchkerr:
         try:
@@ -345,7 +345,7 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
                 elif re.search("private", symcontains):
                     private = True
         except IndexError as ierror:
-            wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Parsing symchk output DBGHELP: " + str(ierror) + " on " + file)
+            _wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Parsing symchk output DBGHELP: " + str(ierror) + " on " + file)
             continue
 
         for field in symchkarr:
@@ -364,7 +364,7 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
     else:
         source = symchkerr[-1]
 
-    wdblogger.log(logging.DEBUG, "[WSUS_DB] is inserting new file and hash to symbolDB")
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] is inserting new file and hash to symbolDB")
 
     symbolobtained = int(False)
 
