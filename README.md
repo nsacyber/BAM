@@ -34,8 +34,8 @@ Needed disk space depends on what is downloaded and extracted. This will differ 
 
 Dependencieis:
 * Python 3.7+ - https://www.python.org/downloads/
-    pefile - https://github.com/erocarrera/pefile
-    (Optional) pyodbc - https://github.com/mkleehammer/pyodbc
+    * pefile - https://github.com/erocarrera/pefile
+    * (Optional) pyodbc - https://github.com/mkleehammer/pyodbc
 * SQLite3
 * Windows Server Update Services (WSUS)  - Add role in Windows Server 2016+ (core or GUI) https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server-2016
 * Windows Debugging Tools (found in Windows SDK) - https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-download-tools
