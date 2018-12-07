@@ -26,16 +26,20 @@ Due to the nature of how Windows updates are structured and named, they are give
 
 Suggested Hardware requiments:
 * 32GB of RAM
-* 5TB of Disk space (extracted contents and downloaded symbols)
-* 2TB of Disk space for WSUS to download everything
+* 10TB of Disk space (extracted contents and downloaded symbols)
+* 5TB of Disk space for WSUS to download all updates only (i.e., not OS/feature/service pack upgrades)
 * 10 Virtual Processors
 
+Needed disk space depends on what is downloaded and extracted. This will differ on your needs.
+
 Dependencieis:
-* Python 3.6+ - https://www.python.org/downloads/
+* Python 3.7+ - https://www.python.org/downloads/
     pefile - https://github.com/erocarrera/pefile
-* SQLite
+    (Optional) pyodbc - https://github.com/mkleehammer/pyodbc
+* SQLite3
 * Windows Server Update Services (WSUS)  - Add role in Windows Server 2016+ (core or GUI) https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server-2016
 * Windows Debugging Tools (found in Windows SDK) - https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-download-tools
+* (Optional) Python SQL Driver - pyodbc - https://docs.microsoft.com/en-us/sql/connect/python/python-driver-for-sql-server?view=sql-server-2017
 
 Use cases:
 
