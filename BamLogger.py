@@ -21,5 +21,4 @@ def log_listener(queue, config):
             logger.handle(item)
         except Exception as e:
             import sys
-            print("error occurred while handling item from queue: \n" + str(e), file=sys.stderr)
-    print("queue loop broken")
+            print("[BAMERROR] error occurred while handling item from queue: \n" + str(e), file=sys.stderr)

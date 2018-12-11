@@ -16,7 +16,7 @@ from pathlib import Path
 
 from dependencies.pefile import pefile
 
-from support.utils import pebinarytype
+from support.utils import pebinarytype, getfilehashes
 
 from support.utils import getpearch, ispedbgstripped, ispebuiltwithdebug
 
@@ -254,8 +254,7 @@ def writebinary(file, sha256, sha512, infolist,  \
     basename = os.path.basename(file)
     global _wdblogger
 
-    _wdblogger.log(logging.DEBUG, "[WSUS_DB] !! Working on ")
-    _wdblogger.log(logging.DEBUG, "[WSUS_DB] " + str(infolist))
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] !! Working on ... " + str(infolist))
 
     dbcursor = conn.cursor()
 
@@ -300,6 +299,7 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
     public = False
     private = False
     ignoredreason = 'None'
+    hashes = ("", "")
 
     symchkarr = {
         "Struct size:": '',
@@ -393,6 +393,8 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
             " SET UpdateId = '{}' WHERE " + \
             "SHA256 = '{}' AND Signature = '{}'").format(updateid, sha256, infolist['signature']))
 
+        symchkarr["PDB:"] = symchkarr["PDB:"].strip('"')
+        hashes = getfilehashes(symchkarr["PDB:"])
     if ignored:
         dbcursor.execute("UPDATE " + globs.PATCHEDFILESDBNAME + \
             " SET Ignored = {} WHERE SHA256 = '{}' AND Signature = '{}'".format(int(ignored), sha256, infolist['signature']))
@@ -400,9 +402,9 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
     dbcursor.execute(
         "INSERT INTO " + dbname + " VALUES (" + "?," * 42 + "?)",
         # FileName, Architecture, Signature, SHA256
-        (basename, infolist['arch'], infolist['signature'], sha256,
+        (basename, infolist['arch'], infolist['signature'], hashes[0],
          # SHA512, PublicSymbol, PrivateSymbol
-         sha512, int(public), int(private),
+         hashes[1], int(public), int(private),
          # SymbolContains, structSize, base, imagesize, symDate
          symcontains, symchkarr["Struct size:"], symchkarr["Base:"],
          symchkarr["Image size:"], symchkarr["Date:"],

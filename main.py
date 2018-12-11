@@ -7,6 +7,10 @@ main method along with argument parsing functions
 # ************************************************************
 import sys
 
+# Verify Python version
+if sys.version_info[0] <= 3 and sys.version_info[1] < 7:
+    sys.exit("This script requires at least Python version 3.7.")
+
 import argparse
 
 from pathlib import Path
@@ -55,11 +59,6 @@ import BamLogger
 # HOW-TO-USE:
 # 1) WSUSContent directory  <---- first
 # ************************************************************
-
-# Verify Python version
-if sys.version_info[0] < 3 and sys.version_info[1] >= 7:
-    sys.exit("This script requires at least Python version 3.7")
-
 
 def displayhelp(parserh):
     '''
