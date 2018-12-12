@@ -234,7 +234,7 @@ class ExtractMgr(threading.Thread):
         logmsg = "[EXMGR] Listing " + str(src) + " CAB contents"
         logger.log(logging.DEBUG, logmsg)
         try:
-            args = "expand -D " + str(src)
+            args = "expand -D \"" + str(src) + "\""
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as pexp:
                 result, dummy = pexp.communicate()
         except subprocess.CalledProcessError as error:
@@ -252,12 +252,11 @@ class ExtractMgr(threading.Thread):
         Call expand.exe to extract files (if any)
         '''
         result = None
-        args = "expand -R " + str(src) + " -F:" + str(extstr) + " " + str(newdir)
+        args = "expand -R \"" + str(src) + "\" -F:" + str(extstr) + " \"" + str(newdir) + "\""
         try:
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as pexp:
                 rawstdout, dummy = pexp.communicate()
                 result = rawstdout.decode("ascii")
-                logger.log(logging.DEBUG, "testing logging within subprocess of worker")
             logmsg = "[EXMGR] extracted " + extstr + " at " + newdir
             logger.log(logging.DEBUG, logmsg)
         except subprocess.CalledProcessError as error:
@@ -279,7 +278,7 @@ class ExtractMgr(threading.Thread):
         result = None
         logmsg = "[EXMGR] Performing 7z on " + newpath
         logger.log(logging.DEBUG, logmsg)
-        args = "C:\\Program Files\\7-Zip\\7z.exe x -aoa -o" + str(newpath) + " -y " +str(src) + " *.dll *.sys *.exe -r"
+        args = "C:\\Program Files\\7-Zip\\7z.exe x -aoa -o\"" + str(newpath) + "\" -y -r \"" +str(src) + "\" *.dll *.sys *.exe"
         try:
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as p7z:
                 result, dummy = p7z.communicate()
@@ -858,39 +857,43 @@ class SymMgr(threading.Thread):
         servers = ""
 
         if symlocal:
-            servers = " "+ symdest
+            servers = " \""+ symdest + "\""
         else:
             servers = "u \"srv*" + symdest + "*" + symserver +"\""
 
         args = (".\\tools\\x64\\symchk.exe /v \"" + str(jobfile) + "\" /s" + servers + " /od")
 
-        with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE) \
-                as psymchk:
-            # communicate used as symchk's output is for one file and
-            # is not "large or unlimited"
-            pstdout, pstderr = psymchk.communicate()
-            stdoutsplit = str(pstdout.decode("ascii")).split("\r\n")
-            stderrsplit = str(pstderr.decode("ascii")).split("\r\n")
+        try:
+            with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE) \
+                    as psymchk:
+                # communicate used as symchk's output is for one file and
+                # is not "large or unlimited"
+                pstdout, pstderr = psymchk.communicate()
+                stdoutsplit = str(pstdout.decode("ascii")).split("\r\n")
+                stderrsplit = str(pstderr.decode("ascii")).split("\r\n")
 
-            logmsg = "[SYMMGR] Attempt to obtain symbols for " + str(jobfile) + " complete"
-            symlogger.log(logging.DEBUG, logmsg)
-
-            infolist = {}
-            try:
-                unpefile = pefile.PE(jobfile)
-            except pefile.PEFormatError as peerror:
-                logmsg = "[WSUS_DB] Caught: PE error " + str(peerror) + ". File: " + jobfile
+                logmsg = "[SYMMGR] Attempt to obtain symbols for " + str(jobfile) + " complete"
                 symlogger.log(logging.DEBUG, logmsg)
-                return result
 
-            infolist['signature'] = getpesigwoage(unpefile)
-            infolist['arch'] = getpearch(unpefile)
+                infolist = {}
+                try:
+                    unpefile = pefile.PE(jobfile)
+                except pefile.PEFormatError as peerror:
+                    logmsg = "[WSUS_DB] Caught: PE error " + str(peerror) + ". File: " + jobfile
+                    symlogger.log(logging.DEBUG, logmsg)
+                    return result
 
-            unpefile.close()
+                infolist['signature'] = getpesigwoage(unpefile)
+                infolist['arch'] = getpearch(unpefile)
 
-            stderrsplit.append(symserver)
-            result = ((str(jobfile), stderrsplit, stdoutsplit), hashes[0], hashes[1], infolist)
+                unpefile.close()
 
+                stderrsplit.append(symserver)
+                result = ((str(jobfile), stderrsplit, stdoutsplit), hashes[0], hashes[1], infolist)
+        except subprocess.CalledProcessError as error:
+            logmsg = "[SYMMGR] {-} symchk failed with error: " + str(error) + ". File: " + jobfile
+            symlogger.log(logging.DEBUG, logmsg)
+            return result
 
         logmsg = "[SYMMGR] completed symtask for " + str(jobfile)
         symlogger.log(logging.DEBUG, logmsg)

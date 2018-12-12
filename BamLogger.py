@@ -7,7 +7,7 @@ import globs
 def log_config():
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-    h = logging.FileHandler("log.txt", "a")
+    h = logging.FileHandler("log.txt", "w")
     logger.addHandler(h)
 
 def log_listener(queue, config):
