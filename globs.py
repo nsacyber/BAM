@@ -6,6 +6,7 @@ this file contains global values and variables used throughout the application
 #***************************************
 import sqlite3
 import multiprocessing as mp
+from importlib import util
 #***************************************
 # Global Constants
 #***************************************
@@ -13,8 +14,22 @@ import multiprocessing as mp
 DBCONN = sqlite3.connect("WSUS_Update_Data.db",
                          check_same_thread=False, isolation_level=None)
 
+DBWSUSCONN = None
+
 DBCONN.execute("pragma journal_mode=wal")
 DBCONN.execute("pragma synchronous=NORMAL")
+
+# WSUS-related
+server = 'np:\\\\.\\pipe\\MICROSOFT##WID\\tsql\\query'
+database = 'SUSDB'
+connstr = 'DRIVER={ODBC Driver 17 for SQL Server};SERVER='+server+';DATABASE='+database+';'
+
+pyodbc_spec = util.find_spec("pyodbc")
+if pyodbc_spec is not None:
+    import pyodbc
+    DBWSUSCONN = pyodbc.connect(connstr)
+
+
 # to view column names
 DBCONN.row_factory = sqlite3.Row
 # table names
