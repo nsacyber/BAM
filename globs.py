@@ -24,12 +24,6 @@ server = 'np:\\\\.\\pipe\\MICROSOFT##WID\\tsql\\query'
 database = 'SUSDB'
 connstr = 'DRIVER={ODBC Driver 17 for SQL Server};SERVER='+server+';DATABASE='+database+';'
 
-pyodbc_spec = util.find_spec("pyodbc")
-if pyodbc_spec is not None:
-    import pyodbc
-    DBWSUSCONN = pyodbc.connect(connstr)
-
-
 # to view column names
 DBCONN.row_factory = sqlite3.Row
 # table names

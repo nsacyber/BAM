@@ -9,6 +9,8 @@ import BamLogger
 
 from db.bam_analysis_db import prodvgtebyname
 
+from support.utils import verifyhex
+
 _wdblogger = logging.getLogger("BAM.wuapis")
 
 def db_logconfig(queue):
@@ -17,15 +19,6 @@ def db_logconfig(queue):
     qh = logging.handlers.QueueHandler(queue)
     _wdblogger.addHandler(qh)
     _wdblogger.setLevel(logging.DEBUG)
-
-def verifyhex(filedigest):
-    hexfiledigest = None
-    try:
-        hexfiledigest = str(hex(int(filedigest, 16))).upper().replace('X', 'x')
-    except ValueError:
-        return hexfiledigest
-    
-    return hexfiledigest
 
 def getsupersededfromfiledigest(filedigest):
     '''

@@ -21,9 +21,9 @@ if pyodbc_spec is None:
 
 import pyodbc
 
-import argparse
-
 import globs
+
+import argparse
 
 import sqlite3
 
@@ -34,6 +34,12 @@ from wuapis import getsupersedingfromfile, getfiledigestattributes, getfileattrb
 from wuapis import findfileswithkb, getsupersededfromfiledigest, getsupersededfromfiledigest_custom
 
 import BamLogger
+
+try:
+    DBWSUSCONN = pyodbc.connect(globs.connstr)
+except pyodbc.OperationalError as error:
+    print(error)
+    sys.exit("Must be able to connect to WSUS")
 
 def displayhelp(parserh):
     '''

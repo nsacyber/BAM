@@ -5,7 +5,7 @@ from .utils import rmfile
 
 from .utils import getpearch, getpesigwoage, getpeage, getpepdbfilename, ispe
 
-from .utils import validatecab, ispedbgstripped, getfilehashes, validatezip
+from .utils import validatecab, ispedbgstripped, getfilehashes, validatezip, verifyhex
 
 __all__ = [
     'getpearch',
@@ -17,5 +17,6 @@ __all__ = [
     'validatezip',
     'ispedbgstripped',
     'getfilehashes',
-    'rmfile'
+    'rmfile',
+    'verifyhex'
 ]

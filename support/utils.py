@@ -349,3 +349,17 @@ def getfilehashes(jobfile):
         return None
 
     return hashes
+
+def verifyhex(filedigest):
+    hexfiledigest = None
+    
+    if isinstance(filedigest, bytes):
+        hexfiledigest = filedigest.hex().upper()
+        hexfiledigest = "0x" + hexfiledigest
+    else:
+        try:
+            hexfiledigest = str(hex(int(filedigest, 16))).upper().replace('X', 'x')
+        except ValueError:
+            return hexfiledigest
+    
+    return hexfiledigest

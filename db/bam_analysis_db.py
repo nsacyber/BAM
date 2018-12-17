@@ -17,7 +17,7 @@ from support.utils import pebinarytype, getfilehashes
 
 from support.utils import getpearch, ispedbgstripped, ispebuiltwithdebug
 
-from support.utils import getpesigwoage, getpeage, getpepdbfilename
+from support.utils import getpesigwoage, getpeage, getpepdbfilename, verifyhex
 
 import globs
 
@@ -157,3 +157,35 @@ def wusamefn(dbcursor, filename, dbname=globs.PATCHEDFILESDBNAME):
 
     _wdblogger.log(logging.DEBUG, "[BAMA] Found entries from wusamefn")
     return result
+
+def getpathtoupdate(dbcursor, filedigest, dbname=globs.UPDATEFILESDBNAME):
+
+    global _wdblogger
+
+    hexfiledigest = verifyhex(filedigest)
+    
+    if hexfiledigest is None:
+        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getpathtoupdate")
+        return hexfiledigest
+
+
+    # Verify file is available
+
+    sql = ("SELECT * FROM " + dbname + " WHERE " +
+        "FileName = '{}'").format(hexfiledigest[2:])
+
+    dbcursor.execute(sql)
+    result = dbcursor.fetchall()
+    
+    if len(result) == 0:
+        _wdblogger.log(logging.DEBUG, "[BAMA] Did not find entries from getpathtoupdate")
+        return None
+
+    diskpath = ""
+    for row in result:
+        for column in row.keys():
+            if column == "DiskPath":
+                diskpath = row[column]
+
+    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getpathtoupdate")
+    return diskpath
