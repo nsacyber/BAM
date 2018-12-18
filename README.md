@@ -5,7 +5,7 @@ updated files (i.e., PE files), and symbol files.
 
 Goal:
     Develop a tool that can (either on a schedule or manually) scan Windows updates, store
-    information about those updates and obtain symbols for updated files.
+    information about those updates, obtain symbols for updated files, and review said information
 
 Requirements:
 * must have the least amount of dependiciaes (portability)
