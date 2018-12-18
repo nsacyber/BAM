@@ -31,12 +31,12 @@ from support.utils import exitfunction, util_logconfig
 
 from wuapis import getsupersedingfromfile, getfiledigestattributes, getfileattrbyfnprodv, findupdate, getKBtofiledigest, getKBoffiledigest
 
-from wuapis import findfileswithkb, getsupersededfromfiledigest, getsupersededfromfiledigest_custom
+from wuapis import findfileswithkb, getsupersededfromfiledigest, getsupersededfromfiledigest_custom, findupdateinfo, kbtosupersedingkb, kbtosupersededkb
 
 import BamLogger
 
 try:
-    DBWSUSCONN = pyodbc.connect(globs.connstr)
+    globs.DBWSUSCONN = pyodbc.connect(globs.connstr)
 except pyodbc.OperationalError as error:
     print(error)
     sys.exit("Must be able to connect to WSUS")
@@ -76,7 +76,7 @@ if __name__ == "__main__":
             '''
             EMPTY
             '''
-           
+
         except sqlite3.Error as error:
             print("Error caught: ", error.args[0])
         except Exception as e:

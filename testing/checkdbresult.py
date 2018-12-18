@@ -457,6 +457,8 @@ try:
 
 except sqlite3.Error as error:
     print("Error caught: ", error.args[0])
+except:
+    print("Error caught")
 
 print("End of TEST")
 

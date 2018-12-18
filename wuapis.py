@@ -25,13 +25,14 @@ def getsupersededfromfiledigest(filedigest):
     Lists all superseded updates
     '''
     global _wdblogger
-    wsuscursor = globs.DBWSUSCONN.cursor()
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getsupersededfromfile")
         return hexfiledigest
+
+    wsuscursor = globs.DBWSUSCONN.cursor()
 
     tsql = ('SET NOCOUNT ON;SELECT * FROM SUSDB.dbo.tbFileForRevision as ffr '
             'JOIN SUSDB.dbo.tbBundleDependency tbd ON tbd.BundledRevisionID = ffr.RevisionID '
@@ -43,6 +44,7 @@ def getsupersededfromfiledigest(filedigest):
 
     if check is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getsupersededfromfile")
+        wsuscursor.close()
         return check
 
     result = wsuscursor.fetchall()
@@ -57,13 +59,14 @@ def getsupersededfromfiledigest_custom(filedigest):
     '''
 
     global _wdblogger
-    wsuscursor = globs.DBWSUSCONN.cursor()
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getsupersededfromfile")
         return hexfiledigest
+
+    wsuscursor = globs.DBWSUSCONN.cursor()
 
     tsql = ('SET NOCOUNT ON;'
             'DECLARE @supersededupdates table '
@@ -83,6 +86,7 @@ def getsupersededfromfiledigest_custom(filedigest):
 
     if check is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getsupersededfromfile")
+        wsuscursor.close()
         return check
 
     result = wsuscursor.fetchall()
@@ -93,13 +97,14 @@ def getsupersededfromfiledigest_custom(filedigest):
 
 def getsupersedingfromfile(filedigest):
     global _wdblogger
-    wsuscursor = globs.DBWSUSCONN.cursor()
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getsupersedingfromfile")
         return hexfiledigest
+
+    wsuscursor = globs.DBWSUSCONN.cursor()
 
     tsql = (''
     'SET NOCOUNT ON;DECLARE @supersedingupdates table (FileDigest varbinary(max), RevisionID INT, '
@@ -118,6 +123,7 @@ def getsupersedingfromfile(filedigest):
 
     if check is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from prodvgtebyname")
+        wsuscursor.close()
         return check
 
     result = wsuscursor.fetchall()
@@ -131,13 +137,14 @@ def getfiledigestattributes(filedigest):
     Digest (cab/exe) to KB (file to KB) with other WSUS information
     '''
     global _wdblogger
-    wsuscursor = globs.DBWSUSCONN.cursor()
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getfiledigestattributes")
         return hexfiledigest
+
+    wsuscursor = globs.DBWSUSCONN.cursor()
 
     tsql = ('SET NOCOUNT ON;SELECT * FROM SUSDB.dbo.tbFileForRevision AS ffr '
             'JOIN SUSDB.dbo.tbBundleDependency tbd ON tbd.BundledRevisionID = ffr.RevisionID '
@@ -150,6 +157,7 @@ def getfiledigestattributes(filedigest):
 
     if check is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getfiledigestattributes")
+        wsuscursor.close()
         return check
 
     result = wsuscursor.fetchall()
@@ -196,10 +204,11 @@ def getfileattrbyfnprodv(filename, prodversion):
 
 def findupdate(updateid):
     global _wdblogger
-    wsuscursor = globs.DBWSUSCONN.cursor()
 
     if not isinstance(updateid, str):
         return None
+
+    wsuscursor = globs.DBWSUSCONN.cursor()
 
     bamcursor = globs.DBCONN.cursor()
     utbname = globs.UPDATEFILESDBNAME
@@ -208,6 +217,7 @@ def findupdate(updateid):
     if check is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from findupdate")
         bamcursor.close()
+        wsuscursor.close()
         return check
 
     result = bamcursor.fetchall()
@@ -221,13 +231,14 @@ def getKBoffiledigest(filedigest):
     Digest (cab/exe) to KB (file to KB)
     '''
     global _wdblogger
-    wsuscursor = globs.DBWSUSCONN.cursor()
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getKBoffiledigest")
         return hexfiledigest
+
+    wsuscursor = globs.DBWSUSCONN.cursor()
 
     tsql = ('SET NOCOUNT ON;SELECT * FROM SUSDB.dbo.tbFileForRevision  as ffr '
             'JOIN SUSDB.dbo.tbBundleDependency tbd ON ffr.RevisionID = tbd.BundledRevisionID '
@@ -238,6 +249,7 @@ def getKBoffiledigest(filedigest):
 
     if check is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getKBoffiledigest")
+        wsuscursor.close()
         return check
 
     result = wsuscursor.fetchall()
@@ -251,13 +263,14 @@ def getKBtofiledigest(kbarticle):
     KB to file(s)
     '''
     global _wdblogger
-    wsuscursor = globs.DBWSUSCONN.cursor()
     
     try:
         kbarticleint = int(kbarticle)
     except ValueError:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: getKBtofiledigest")
         return None
+
+    wsuscursor = globs.DBWSUSCONN.cursor()
 
     tsql = ('SET NOCOUNT ON;SELECT f.FileDigest, f.FileName, kbafr.KBArticleID '
                 'FROM SUSDB.dbo.tbKBArticleForRevision kbafr '
@@ -270,6 +283,7 @@ def getKBtofiledigest(kbarticle):
 
     if check is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getKBtofiledigest")
+        wsuscursor.close()
         return check
 
     result = wsuscursor.fetchall()
@@ -283,13 +297,14 @@ def findfileswithkb(kbarticle):
     find files that have a filename with KB number in it. May not guarantee to capture all related files.
     '''
     global _wdblogger
-    wsuscursor = globs.DBWSUSCONN.cursor()
     
     try:
         kbarticleint = int(kbarticle)
     except ValueError:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: findfileswithkb")
         return None
+
+    wsuscursor = globs.DBWSUSCONN.cursor()
 
     tsql = ("SET NOCOUNT ON;SELECT FileName, FileDigest FROM SUSDB.dbo.tbFile "
             "WHERE FileName collate SQL_Latin1_General_CP1_CI_AS LIKE '%{}%'").format(str(kbarticle))
@@ -298,6 +313,7 @@ def findfileswithkb(kbarticle):
 
     if check is None:
         _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from findfileswithkb")
+        wsuscursor.close()
         return check
 
     result = wsuscursor.fetchall()
@@ -305,3 +321,101 @@ def findfileswithkb(kbarticle):
     _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from findfileswithkb")
     wsuscursor.close()
     return result
+
+def findupdateinfo(updateid):
+    global _wdblogger
+
+    if not isinstance(updateid, str):
+        return None
+
+    wsuscursor = globs.DBWSUSCONN.cursor()
+
+    tsql = ("SET NOCOUNT ON;SELECT * FROM SUSDB.PUBLIC_VIEWS.vUpdate "
+    "WHERE UpdateId = CAST('{}' as uniqueidentifier)").format(updateid)
+
+    check = wsuscursor.execute(tsql)
+
+    if check is None:
+        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from findupdateinfo")
+        wsuscursor.close()
+        return check
+
+    result = wsuscursor.fetchall()
+
+    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from findupdateinfo")
+    wsuscursor.close()
+    return result
+
+def kbtosupersedingkb(kbarticle):
+    global _wdblogger
+
+    try:
+        kbarticleint = int(kbarticle)
+    except ValueError:
+        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: kbtosupersedingkb")
+        return None
+
+    updateinfo = []
+    fdlist = getKBtofiledigest(kbarticle)
+
+    if fdlist is None:
+        return None
+
+    for filed in fdlist:
+        superfiles = getsupersedingfromfile(filed[0])
+
+        if superfiles is None:
+            return None
+
+        for superfile in superfiles:
+            uinfo = findupdateinfo(superfile[1])
+
+            if uinfo is None:
+                return None
+
+            updateinfo.append(uinfo[0][13])
+        
+    kbsorted = None
+
+    if len(updateinfo) != 0:
+        kbsorted = list(sorted(set(updateinfo)))  
+
+    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from kbtosupersedingkb")
+    return kbsorted
+
+def kbtosupersededkb(kbarticle):
+    global _wdblogger
+
+    try:
+        kbarticleint = int(kbarticle)
+    except ValueError:
+        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: kbtosupersedingkb")
+        return None
+
+    updateinfo = []
+    fdlist = getKBtofiledigest(kbarticle)
+
+    if fdlist is None:
+        return None
+
+    for filed in fdlist:
+        superfiles = getsupersededfromfiledigest(filed[0])
+
+        if superfiles is None:
+            continue
+            
+        for superfile in superfiles:
+            uinfo = findupdateinfo(superfile[6])
+            
+            if uinfo is None:
+                continue
+
+            updateinfo.append(uinfo[0][13])
+
+    kbsorted = None
+
+    if len(updateinfo) != 0:
+        kbsorted = list(sorted(set(updateinfo)))     
+
+    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from kbtosupersedingkb")
+    return kbsorted    
