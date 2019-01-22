@@ -23,5 +23,5 @@ __all__ = [
     'getwuwithsamefnprodvlte',
     'getwuwithsamefnprodvgt',
     'getwuwithsamefnprodvlt',
-    'getlistofpublicsym',
+    'getlistofpublicsym'
 ]

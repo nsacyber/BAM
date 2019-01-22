@@ -91,6 +91,8 @@ if __name__ == "__main__":
                 Update the BAM DB with superseding and superseded information
             '''
 
+            wuapis.updatewuentrysecedenceinfo()
+
         except sqlite3.Error as error:
             print("Error caught: ", error.args[0])
         except Exception as e:
