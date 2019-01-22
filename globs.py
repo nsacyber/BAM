@@ -33,7 +33,7 @@ PATCHEDFILESDBNAME = "PatchedFiles"
 
 PATCHEDFILETSTMT = ("CREATE TABLE IF NOT EXISTS PatchedFiles " +
     "(FileName text, OperatingSystemVersion text, Architecture text," +
-    " Signature text, SHA256 text, SHA512 text, Age integer, " +
+    " Signature text, SHA256 text, SHA1 text, Age integer, " +
     "PdbFilename text, DiskPath text, SymbolObtained integer, " +
     "SymbolPath text, FileExtension text, Type text, " +
     "OriginalFilename text, FileDescription text, ProductName text, " +
@@ -46,15 +46,15 @@ PATCHEDFILETSTMT = ("CREATE TABLE IF NOT EXISTS PatchedFiles " +
 
 UPDATEFILETSTMT = ("CREATE TABLE IF NOT EXISTS UpdateFiles " +
     "(FileName text, " +
-    "SHA256 text, SHA512 text, " +
-    "Extracted integer, SymbolsObtained integer, WasSeceded integer, " +
+    "SHA256 text, SHA1 text, " +
+    "Extracted integer, SymbolsObtained integer, Seceding text, " +
     "SecededBy text, " +
     "DiskPath text, " +
     "InsertionTime text);")
 
 SYMBOLFILETSTMT = ("CREATE TABLE IF NOT EXISTS SymbolFiles " +
     "(FileName text, Architecture text, Signature text, " +
-    "SHA256 text, SHA512 text, " +
+    "SHA256 text, SHA1 text, " +
     "PublicSymbol integer, " +
     "PrivateSymbol integer, SymContains integer, " +
     "structSize integer, base integer, imageSize integer, " +

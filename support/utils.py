@@ -334,14 +334,14 @@ def getfilehashes(jobfile):
     return a tuple of string hash values for a file
     '''
     from hashlib import sha256
-    from hashlib import sha512
+    from hashlib import sha1
 
     hashes = None
 
     try:
         with open(str(jobfile), 'rb') as item:
             buf = item.read()
-            hashes = (sha256(buf).hexdigest(), sha512(buf).hexdigest())
+            hashes = (sha256(buf).hexdigest(), sha1(buf).hexdigest())
     except FileNotFoundError as ferror:
         global _utilLogger
         _utilLogger.log(logging.DEBUG, "{-} getfilehashes: Could not open " + str(jobfile) + " " + \

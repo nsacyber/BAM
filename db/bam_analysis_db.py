@@ -305,3 +305,6 @@ def getlistofpublicsym(dbcursor, filename):
         return None
     
     return result
+
+
+    

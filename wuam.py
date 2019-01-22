@@ -28,13 +28,18 @@ import argparse
 import sqlite3
 
 from support.utils import exitfunction, util_logconfig
-
+'''
 from wuapis import getsupersedingfromfile, getfiledigestattributes, getfileattrbyfnprodv, findupdate, getKBtofiledigest, getKBoffiledigest
 
 from wuapis import findfileswithkb, getsupersededfromfiledigest, getsupersededfromfiledigest_custom, findupdateinfo, kbtosupersedingkb, kbtosupersededkb
 
-import BamLogger
+from wuapis import updatewuentrysecedenceinfo
+'''
+import wuapis
 
+import BamLogger
+import logging
+import multiprocessing as mp
 try:
     globs.DBWSUSCONN = pyodbc.connect(globs.connstr)
 except pyodbc.OperationalError as error:
@@ -62,19 +67,28 @@ def parsecommandline(parser):
 
     return parser.parse_args()
 
-
-
 if __name__ == "__main__":    
 
     PARSER = argparse.ArgumentParser()
     ARGS = parsecommandline(PARSER)
 
+    print("Connected to: " + globs.connstr)
+
+    globqueue = mp.Manager().Queue(-1)
+    mainlogger = logging.getLogger("BAM.wuam")
+    qh = logging.handlers.QueueHandler(globqueue)
+    mainlogger.addHandler(qh)
+    mainlogger.setLevel(logging.DEBUG)
+
+    loggerProcess = mp.Process(target=BamLogger.log_listener, args=(globqueue, BamLogger.log_config))
+    loggerProcess.start()
+
+    wuapis.db_logconfig(globqueue)
+
     if ARGS.winupdateinfo:
         try:
-            print("Connected to: " + globs.connstr)
-
-            '''
-            EMPTY
+            '''        
+                Update the BAM DB with superseding and superseded information
             '''
 
         except sqlite3.Error as error:
@@ -84,3 +98,5 @@ if __name__ == "__main__":
     
     globs.DBCONN.close()
     globs.DBWSUSCONN.close()
+    globqueue.put_nowait(None)
+    loggerProcess.join()
