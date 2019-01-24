@@ -15,13 +15,11 @@ def updatetablewocolumn(tabletoupdate, colmlist):
     result = None
 
     try:
-        dbcursor.execute("BEGIN TRANSACTION;")
         
         dbcursor.execute("CREATE TABLE temp_" + str(tabletoupdate) + " AS SELECT " + colmlist +
             " FROM " + str(tabletoupdate))
         dbcursor.execute("DROP TABLE " + str(tabletoupdate))
         dbcursor.execute("ALTER TABLE temp_" + str(tabletoupdate) + " RENAME TO " + str(tabletoupdate) + ";") 
-        dbcursor.execute("END TRANSACTION")
         DBCONN.commit()
     except sqlite3.Error as error:
         print("Caught: " + error.args[0])
@@ -37,10 +35,8 @@ def updatetableaddcol(tabletoupdate, cdef):
     result = None
 
     try:
-        dbcursor.execute("BEGIN TRANSACTION;")
         dbcursor.execute("ALTER TABLE " + str(tabletoupdate) + " ADD COLUMN " + 
             str(cdef) + ";")
-        dbcursor.execute("END TRANSACTION;")
 
         DBCONN.commit()
     except sqlite3.Error as error:
@@ -50,14 +46,13 @@ def updatetableaddcol(tabletoupdate, cdef):
     dbcursor.close()
     return result
 
-def updatetablerenamecol(db_conn, tabletoupdate, cnamefrom, cnameto):
+def updatetablerenamecol(tabletoupdate, cnamefrom, cnameto):
     global DBCONN
     dbcursor = DBCONN.cursor()
 
     result = None
 
     try:
-        dbcursor.execute("BEGIN TRANSACTION;")
         dbcursor.execute("ALTER TABLE " + str(tabletoupdate) + " RENAME COLUMN " + str(cnamefrom) +
             " TO " + str(cnameto) + ";")
 
@@ -70,6 +65,7 @@ def updatetablerenamecol(db_conn, tabletoupdate, cnamefrom, cnameto):
     return result
 
 def verifytables(tablename):
+    global DBCONN
     dbcursor = DBCONN.cursor()
 
     result = None
@@ -85,6 +81,7 @@ def verifytables(tablename):
     return result
 
 def verifytabledata(tablename):
+    global DBCONN
     dbcursor = DBCONN.cursor()
     
     result = None
@@ -100,6 +97,7 @@ def verifytabledata(tablename):
     return result
 
 def countcolumnentries(tablename, colname):
+    global DBCONN
     dbcursor = DBCONN.cursor()
     
     result = None
@@ -123,7 +121,7 @@ if __name__ == "__main__":
         print(verifytables(UPDATEFILESDBNAME)) # show old schema for table
         updatetableaddcol(UPDATEFILESDBNAME, "foobar text") # columnname column_type, add new column to existing table
         print(verifytables(UPDATEFILESDBNAME)) # show old schema for old table with new column added
-        updatetablewocolumn(UPDATEFILESDBNAME, "column1, column2, column3") # create a new table with the columns to KEEP only and deleting old table
+        updatetablewocolumn(UPDATEFILESDBNAME, "foobar, column1, column3") # create a new table with the columns to keep and deleting unwanted one (i.e., column2)
         print(verifytables(UPDATEFILESDBNAME)) # show new schema for table
     '''
 

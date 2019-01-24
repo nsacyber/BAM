@@ -209,7 +209,7 @@ class ExtractMgr(threading.Thread):
             print("ncabdir: " + str(ncabdir) +  " does not exist")
 
     @staticmethod
-    def verifyentry(src, sha256, sha512, logger):
+    def verifyentry(src, sha256, sha1, logger):
         '''
         verify DB entry
         '''
@@ -219,7 +219,7 @@ class ExtractMgr(threading.Thread):
         filepath = str(Path(src).resolve())
 
         if wsuse_db.dbentryexist(globs.DBCONN.cursor(),     \
-                                globs.UPDATEFILESDBNAME, sha256, sha512):
+                                globs.UPDATEFILESDBNAME, sha256, sha1):
             logmsg = "[EXMGR] item " + filepath + " already exists in db, skipping"
             logger.log(logging.DEBUG, logmsg)
             return False
@@ -921,41 +921,41 @@ class DBMgr(threading.Thread):
         self.exdest = exdest
         self.dblogger = logging.getLogger("BAM.Pools.DbMgr")
 
-    def addtask(self, optype, jobtuple, sha256, sha512, infolist):
+    def addtask(self, optype, jobtuple, sha256, sha1, infolist):
         '''
         takes results generated from other Mgrs and creates a task which is placed
         in the Queue
         '''
-        task = (optype, jobtuple, sha256, sha512, infolist)
+        task = (optype, jobtuple, sha256, sha1, infolist)
         self.jobqueue.put(task)
         self.dblogger.log(logging.DEBUG, "[DBMGR] " + optype + " task added to queue. Queue at " + \
                str(self.jobqueue.qsize()) + " tasks.")
         self.jobsig.set()
 
-    def writeupdate(self, file, sha256, sha512):
+    def writeupdate(self, file, sha256, sha1):
         '''
         performs writes to DB for Update files
         should use function in wsuse_db
         '''
         self.dblogger.log(logging.DEBUG, "[DBMGR] writing update for (" + str(file) + ")")
-        wsuse_db.writeupdate(file, sha256, sha512, conn=self.dbconn)
+        wsuse_db.writeupdate(file, sha256, sha1, conn=self.dbconn)
 
-    def writebinary(self, file, sha256, sha512, infolist):
+    def writebinary(self, file, sha256, sha1, infolist):
         '''
         performs write updates to db for Binary files
         should use function in wsuse_db
         '''
         self.dblogger.log(logging.DEBUG, "[DBMGR] writing binary for (" + str(file) + ")")
-        wsuse_db.writebinary(file, sha256, sha512, infolist, conn=self.dbconn)
+        wsuse_db.writebinary(file, sha256, sha1, infolist, conn=self.dbconn)
 
-    def writesym(self, file, symchkerr, symchkout, sha256, sha512, infolist):
+    def writesym(self, file, symchkerr, symchkout, sha256, sha1, infolist):
         '''
         performs write updates to db for Symbol Files
         should use function in wsuse_db
         '''
         self.dblogger.log(logging.DEBUG, "[DBMGR] writing symbol for (" + str(file) + ")")
 
-        wsuse_db.writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, self.exdest, conn=self.dbconn)
+        wsuse_db.writesymbol(file, symchkerr, symchkout, sha256, sha1, infolist, self.exdest, conn=self.dbconn)
 
     def donesig(self):
         '''

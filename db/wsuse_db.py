@@ -70,14 +70,14 @@ def construct_tables(db_conn):
 
     return True
 
-def dbentryexist(dbcursor, dbname, sha256, sha512):
+def dbentryexist(dbcursor, dbname, sha256, sha1):
     '''
     check to see if particular hash already exists within db
     '''
     dbcursor.execute(
         "SELECT * FROM " + dbname + " WHERE " +
-        "SHA256 = ? AND SHA512 = ?",
-        (sha256, sha512))
+        "SHA256 = ? AND SHA1 = ?",
+        (sha256, sha1))
     check = dbcursor.fetchone()
 
     global _wdblogger
@@ -89,15 +89,15 @@ def dbentryexist(dbcursor, dbname, sha256, sha512):
     _wdblogger.log(logging.DEBUG, "[WSUS_DB] found " + sha256 + "entry in DB")
     return True
 
-def dbentryexistwithsymbols(dbcursor, dbname, sha256, sha512):
+def dbentryexistwithsymbols(dbcursor, dbname, sha256, sha1):
     '''
     check to see if particular hash already exists within db and also if that
     entry has symbols already obtained for it
     '''
     dbcursor.execute(
         "SELECT * FROM " + dbname + " WHERE " +
-        "SHA256 = ? AND SHA512 = ?",
-        (sha256, sha512))
+        "SHA256 = ? AND SHA1 = ?",
+        (sha256, sha1))
     check = dbcursor.fetchone()
 
     global _wdblogger
@@ -112,7 +112,7 @@ def dbentryexistwithsymbols(dbcursor, dbname, sha256, sha512):
     _wdblogger.log(logging.DEBUG, "[WSUS_DB] found " + sha256 + "entry with symbols obtained in DB")
     return True
 
-def symbolentryexist(dbcursor, dbname, signature, sha256, sha512):
+def symbolentryexist(dbcursor, dbname, signature, sha256, sha1):
     '''
     This function is invoked prior to obtaining symbols for a PE file
     to:
@@ -123,8 +123,8 @@ def symbolentryexist(dbcursor, dbname, signature, sha256, sha512):
     '''
     dbcursor.execute(
         "SELECT * FROM " + dbname + " WHERE " +
-        "Signature = '" + signature + "' AND SHA256 = ? AND SHA512 = ?",
-        (sha256, sha512))
+        "Signature = '" + signature + "' AND SHA256 = ? AND SHA1 = ?",
+        (sha256, sha1))
     check = dbcursor.fetchone()
 
     global _wdblogger
@@ -192,7 +192,7 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
 
     return result
 
-def writeupdate(file, sha256, sha512, \
+def writeupdate(file, sha256, sha1, \
         dbname=globs.UPDATEFILESDBNAME, conn=globs.DBCONN):
     '''
     @writeupdate
@@ -210,11 +210,6 @@ def writeupdate(file, sha256, sha512, \
     can be found using the WID
 
     Since there is no clean way to get the properities
-
-    file - update file to add or update db with
-    sha256 - digest value (not hashlib object) of file
-    sha512 - digest value (not hashlib object) of file
-    seperated (mostly cannabalized) off from checkUpdates...
     '''
     from time import time
 
@@ -227,12 +222,12 @@ def writeupdate(file, sha256, sha512, \
         "INSERT INTO " + dbname + " VALUES (" + "?," * 8 + "?)",
         # FileName, SHA256
         (basename, sha256,
-         # SHA512,
-         sha512,
+         # SHA1,
+         sha1,
          # Extracted, SymbolsObtained
          1, 0,
-         # WasSeceded, SecededBy,
-         0, None,
+         # Seceding, SecededBy,
+         '', '',
          # DiskPath,
          str(file),
          # InsertionTime
@@ -241,12 +236,12 @@ def writeupdate(file, sha256, sha512, \
     dbcursor.close()
     return True
 
-def writebinary(file, sha256, sha512, infolist,  \
+def writebinary(file, sha256, sha1, infolist,  \
         dbname=globs.PATCHEDFILESDBNAME, conn=globs.DBCONN):
     '''
     file - update file to add or update db with
     sha256 - digest value (not hashlib object) of file
-    sha512 - digest value (not hashlib object) of file
+    sha1 - digest value (not hashlib object) of file
 
     function to check database for binary file before symchecking;
     updates database if already in existence
@@ -263,8 +258,8 @@ def writebinary(file, sha256, sha512, infolist,  \
         "INSERT INTO " + dbname + " VALUES (" + "?," * 31 + "?)",
         # FileName,OperatingSystemVersion,Architecture,Signature,SHA256
         (basename, infolist['osver'], infolist['arch'], infolist['signature'], sha256,
-         # SHA512,Age,PdbFilename,DiskPath,SymbolObtained
-         sha512, infolist['age'], infolist['pdbfilename'], str(file), 0,
+         # SHA1,Age,PdbFilename,DiskPath,SymbolObtained
+         sha1, infolist['age'], infolist['pdbfilename'], str(file), 0,
          # SymbolPath,Type,FileExtension,OriginalFilename,FileDescription
          None, infolist['stype'], infolist['fileext'], infolist['OriginalFilename'],
          infolist['FileDescription'],
@@ -285,7 +280,7 @@ def writebinary(file, sha256, sha512, infolist,  \
     dbcursor.close()
     return True
 
-def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
+def writesymbol(file, symchkerr, symchkout, sha256, sha1, infolist, \
         exdest, dbname=globs.SYMBOLFILESDBNAME, conn=globs.DBCONN):
     '''
     The fields taken from symchk.exe are taken from:
@@ -403,7 +398,7 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha512, infolist, \
         "INSERT INTO " + dbname + " VALUES (" + "?," * 42 + "?)",
         # FileName, Architecture, Signature, SHA256
         (basename, infolist['arch'], infolist['signature'], hashes[0],
-         # SHA512, PublicSymbol, PrivateSymbol
+         # SHA1, PublicSymbol, PrivateSymbol
          hashes[1], int(public), int(private),
          # SymbolContains, structSize, base, imagesize, symDate
          symcontains, symchkarr["Struct size:"], symchkarr["Base:"],
