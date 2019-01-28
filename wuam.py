@@ -28,13 +28,7 @@ import argparse
 import sqlite3
 
 from support.utils import exitfunction, util_logconfig
-'''
-from wuapis import getsupersedingfromfile, getfiledigestattributes, getfileattrbyfnprodv, findupdate, getKBtofiledigest, getKBoffiledigest
 
-from wuapis import findfileswithkb, getsupersededfromfiledigest, getsupersededfromfiledigest_custom, findupdateinfo, kbtosupersedingkb, kbtosupersededkb
-
-from wuapis import updatewuentrysecedenceinfo
-'''
 import wuapis
 
 import BamLogger
