@@ -14,10 +14,15 @@ from importlib import util
 DBCONN = sqlite3.connect("WSUS_Update_Data.db",
                          check_same_thread=False, isolation_level=None)
 
+DBCONN2 = sqlite3.connect("BAM_Post_Data.db",
+                         check_same_thread=False, isolation_level=None)
+
 DBWSUSCONN = None
 
 DBCONN.execute("pragma journal_mode=wal")
 DBCONN.execute("pragma synchronous=NORMAL")
+DBCONN2.execute("pragma journal_mode=wal")
+DBCONN2.execute("pragma synchronous=NORMAL")
 
 # WSUS-related
 server = 'np:\\\\.\\pipe\\MICROSOFT##WID\\tsql\\query'
@@ -26,6 +31,7 @@ connstr = 'DRIVER={ODBC Driver 17 for SQL Server};SERVER='+server+';DATABASE='+d
 
 # to view column names
 DBCONN.row_factory = sqlite3.Row
+DBCONN2.row_factory = sqlite3.Row
 # table names
 UPDATEFILESDBNAME = "UpdateFiles"
 SYMBOLFILESDBNAME = "SymbolFiles"
@@ -70,6 +76,11 @@ SYMBOLFILETSTMT = ("CREATE TABLE IF NOT EXISTS SymbolFiles " +
     "PdbSignature text, PdbDbiAge integer, Source text, " +
     "Result integer, Ignored integer, IgnoredReason text, " +
     "SymbolObtained integer);")
+
+BINSKIMTABLE = ("CREATE TABLE IF NOT EXISTS BinSkimFiles " +
+    "(FileName text, SHA256 text, SHA1 text, RuleId text," +
+    "Result text, MessageId text, Message text, " +
+    "timestamp text);")
 
 # enable or disable debug output
 VERBOSITY = False

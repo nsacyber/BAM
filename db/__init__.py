@@ -1,7 +1,7 @@
 '''
 Import
 '''
-from .wsuse_db import construct_tables
+from .wsuse_db import construct_tables, construct_post_tables
 
 from .bam_analysis_db import prodvgtebyname, prodvltebyname, prodvltbyname, prodvgtbyname, prodvebyname, wusamefn
 
@@ -9,8 +9,11 @@ from .bam_analysis_db import getpathtoupdate, getwuwithsamefnprodv, getwuwithsam
 
 from .bam_analysis_db import getwuwithsamefnprodvgt, getwuwithsamefnprodvlt, getlistofpublicsym
 
+from .bam_analysis_db import getsymsofsamefnprodv
+
 __all__ = [
-    'construct_tables', 
+    'construct_tables',
+    'construct_post_tables',
     'prodvgtebyname',
     'prodvltebyname',
     'prodvltbyname',
@@ -23,5 +26,6 @@ __all__ = [
     'getwuwithsamefnprodvlte',
     'getwuwithsamefnprodvgt',
     'getwuwithsamefnprodvlt',
-    'getlistofpublicsym'
+    'getlistofpublicsym',
+    'getsymsofsamefnprodv'
 ]

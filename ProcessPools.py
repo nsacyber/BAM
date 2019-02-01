@@ -242,7 +242,11 @@ class ExtractMgr(threading.Thread):
                    " failed with " + str(error.returncode) + " " +  \
                    str(error.stderr)
             logger.log(logging.DEBUG, logmsg)
-            pass
+            result = None
+        except FileNotFoundError as error:
+            logmsg = ("[EXMGR] {-} expand.exe not found")
+            logger.log(logging.DEBUG, logmsg)
+            result = None
 
         return result
 
@@ -266,7 +270,11 @@ class ExtractMgr(threading.Thread):
                     "{-} cmd (" + str(error.cmd) + ") stderr (" + \
                     str(error.stderr) + ")"
             logger.log(logging.DEBUG, logmsg)
-            pass
+            result = None
+        except FileNotFoundError as error:
+            logmsg = ("[EXMGR] {-} expand.exe not found")
+            logger.log(logging.DEBUG, logmsg)
+            result = None
 
         return result
 
@@ -283,11 +291,15 @@ class ExtractMgr(threading.Thread):
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as p7z:
                 result, dummy = p7z.communicate()
         except subprocess.CalledProcessError as error:
-            pass
             logmsg = "[EXMGR] {-} extracting, using 7z, from " + src + \
                      " failed with " + str(error.returncode) + " " +  \
                      error.output.decode('ascii')
             logger.log(logging.DEBUG, logmsg)
+            result = None
+        except FileNotFoundError as error:
+            logmsg = ("[PBSK] {-} 7z.exe not found")
+            logger.log(logging.DEBUG, logmsg)
+            result = None
         
         return result
 
@@ -893,7 +905,11 @@ class SymMgr(threading.Thread):
         except subprocess.CalledProcessError as error:
             logmsg = "[SYMMGR] {-} symchk failed with error: " + str(error) + ". File: " + jobfile
             symlogger.log(logging.DEBUG, logmsg)
-            return result
+            result = None
+        except FileNotFoundError as error:
+            logmsg = ("[SYMMGR] {-} symchk.exe not found")
+            symlogger.log(logging.DEBUG, logmsg)
+            result = None
 
         logmsg = "[SYMMGR] completed symtask for " + str(jobfile)
         symlogger.log(logging.DEBUG, logmsg)

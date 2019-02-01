@@ -70,6 +70,21 @@ def construct_tables(db_conn):
 
     return True
 
+def construct_post_tables():
+    dbcursor = globs.DBCONN2.cursor()
+
+    try:
+        dbcursor.execute(globs.BINSKIMTABLE)
+        globs.DBCONN2.commit()
+    except sqlite3.Error as error:
+        print("Caught: " + error.args[0])
+        dbcursor.close()
+        return False
+    dbcursor.close()
+
+    return True
+
+
 def dbentryexist(dbcursor, dbname, sha256, sha1):
     '''
     check to see if particular hash already exists within db

@@ -49,7 +49,7 @@ try:
     '''
         Cases for entry verification
     '''
-
+    
     testhdr("Cases for entry verification")
 
     header("List debugging information for a file (nlsdata0009.dll)",
@@ -156,7 +156,7 @@ try:
         print("")
 
     header("List file that contains UNKNOWN symbol loaded", COUNT)
-    CURSOR.execute("SELECT FileName,SHA256,SymContains FROM SymbolFiles "
+    CURSOR.execute("SELECT FileName,SHA1,SymContains FROM SymbolFiles "
                    "WHERE SymContains = 'UNKNOWN' LIMIT 1")
     for row in CURSOR.fetchall():
         for column in row.keys():

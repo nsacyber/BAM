@@ -11,27 +11,27 @@ from db.bam_analysis_db import prodvgtebyname
 
 from support.utils import verifyhex
 
-_wdblogger = logging.getLogger("BAM.wuapis")
+_wulogger = logging.getLogger("BAM.wuapis")
 
 def db_logconfig(queue):
-    global _wdblogger
+    global _wulogger
 
     qh = logging.handlers.QueueHandler(queue)
-    _wdblogger.addHandler(qh)
-    _wdblogger.setLevel(logging.DEBUG)
+    _wulogger.addHandler(qh)
+    _wulogger.setLevel(logging.DEBUG)
 
 def getsupersededfromfiledigest(filedigest):
     '''
     Lists all superseded updates
     '''
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getsupersededfromfile")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getsupersededfromfile")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -45,13 +45,13 @@ def getsupersededfromfiledigest(filedigest):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getsupersededfromfile")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getsupersededfromfile")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getsupersededfromfile (" + str(filedigest) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getsupersededfromfile (" + str(filedigest) + ")")
     wsuscursor.close()
     return result
 
@@ -60,14 +60,14 @@ def getsupersededfromfiledigest_custom(filedigest):
     File to superseded updates; Determines if Digest is superseding (list all superseded updates for file if any)
     '''
 
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getsupersededfromfile")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getsupersededfromfile")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -89,25 +89,25 @@ def getsupersededfromfiledigest_custom(filedigest):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getsupersededfromfile")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getsupersededfromfile")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getsupersededfromfile (" + str(filedigest) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getsupersededfromfile (" + str(filedigest) + ")")
     wsuscursor.close()
     return result
 
 def getsupersedingfromfile(filedigest):
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getsupersedingfromfile")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getsupersedingfromfile")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -128,13 +128,13 @@ def getsupersedingfromfile(filedigest):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getsupersedingfromfile")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getsupersedingfromfile")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getsupersedingfromfile (" + str(filedigest) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getsupersedingfromfile (" + str(filedigest) + ")")
     wsuscursor.close()
     return result
 
@@ -143,14 +143,14 @@ def getfiledigestbattributeswodu(filedigest):
     Digest (cab/exe) to KB (file to KB) with other WSUS information (Bundled)
     without DefinitionUpdates
     '''
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getfiledigestbattributeswodu")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getfiledigestbattributeswodu")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -165,13 +165,13 @@ def getfiledigestbattributeswodu(filedigest):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getfiledigestbattributeswodu")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getfiledigestbattributeswodu")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getfiledigestbattributeswodu (" + str(filedigest) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getfiledigestbattributeswodu (" + str(filedigest) + ")")
     wsuscursor.close()
     return result
 
@@ -180,14 +180,14 @@ def getfiledigestbattributes(filedigest):
     '''
     Digest (cab/exe) to KB (file to KB) with other WSUS information (Bundled)
     '''
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getfiledigestbattributes")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getfiledigestbattributes")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -202,13 +202,13 @@ def getfiledigestbattributes(filedigest):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getfiledigestbattributes")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getfiledigestbattributes")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getfiledigestbattributes (" + str(filedigest) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getfiledigestbattributes (" + str(filedigest) + ")")
     wsuscursor.close()
     return result
 
@@ -218,14 +218,14 @@ def getfiledigestattributeswodu(filedigest):
     without DefinitionUpdates.
     May return multiple results.
     '''
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getfiledigestattributeswodu")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getfiledigestattributeswodu")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -239,13 +239,13 @@ def getfiledigestattributeswodu(filedigest):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getfiledigestattributeswodu")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getfiledigestattributeswodu")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getfiledigestattributeswodu (" + str(filedigest) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getfiledigestattributeswodu (" + str(filedigest) + ")")
     wsuscursor.close()
     return result
 
@@ -254,14 +254,14 @@ def getfiledigestattributes(filedigest):
     Digest (cab/exe) to KB (file to KB) with other WSUS information.
     May return multiple results.
     '''
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getfiledigestattributes")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getfiledigestattributes")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -275,13 +275,13 @@ def getfiledigestattributes(filedigest):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getfiledigestattributes")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getfiledigestattributes")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getfiledigestattributes (" + str(filedigest) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getfiledigestattributes (" + str(filedigest) + ")")
     wsuscursor.close()
     return result
 
@@ -303,7 +303,7 @@ def getfileattrbyfnprodv(filename, prodversion):
                 hexfiledigest = verifyhex("0x" + row[column])
 
                 if hexfiledigest is None:
-                    _wdblogger.log(logging.DEBUG, 
+                    _wulogger.log(logging.DEBUG, 
                             "[WUAPIS] {} not valid hex: getfileattrbyfnprodv".format(row[column]))
                     continue
 
@@ -322,7 +322,7 @@ def getfileattrbyfnprodv(filename, prodversion):
     return fileattrlist
 
 def findupdate(updateid):
-    global _wdblogger
+    global _wulogger
 
     result = []
 
@@ -336,7 +336,7 @@ def findupdate(updateid):
     check = bamcursor.execute("SELECT FileName FROM {} WHERE FileName = '{}'".format(utbname, updateid))
     
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from findupdate")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from findupdate")
         bamcursor.close()
         wsuscursor.close()
         return result
@@ -351,14 +351,14 @@ def getKBoffiledigest(filedigest):
     '''
     Digest (cab/exe) to KB (file to KB)
     '''
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getKBoffiledigest")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getKBoffiledigest")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -371,13 +371,13 @@ def getKBoffiledigest(filedigest):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getKBoffiledigest")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getKBoffiledigest")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getKBoffiledigest (" + str(filedigest) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getKBoffiledigest (" + str(filedigest) + ")")
     wsuscursor.close()
     return result    
 
@@ -385,14 +385,14 @@ def getKBtofiledigest(kbarticle):
     '''
     KB to file(s) without matching platform
     '''
-    global _wdblogger
+    global _wulogger
     
     result = []
 
     try:
         kbarticleint = int(kbarticle)
     except ValueError:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: getKBtofiledigest")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: getKBtofiledigest")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -407,13 +407,13 @@ def getKBtofiledigest(kbarticle):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getKBtofiledigest")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getKBtofiledigest")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getKBtofiledigest (" + str(kbarticle) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getKBtofiledigest (" + str(kbarticle) + ")")
     wsuscursor.close()
     return result
 
@@ -421,20 +421,20 @@ def getKBtoufiledigest(kbarticle, filedigest):
     '''
     KB to filedigest with matching platform
     '''
-    global _wdblogger
+    global _wulogger
     
     result = []
 
     try:
         kbarticleint = int(kbarticle)
     except ValueError:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: getKBtofiledigest")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: getKBtofiledigest")
         return result
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getKBoffiledigest")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: getKBoffiledigest")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -450,13 +450,13 @@ def getKBtoufiledigest(kbarticle, filedigest):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getKBtofiledigest")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from getKBtofiledigest")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from getKBtofiledigest (" + str(kbarticle) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from getKBtofiledigest (" + str(kbarticle) + ")")
     wsuscursor.close()
     return result
 
@@ -464,14 +464,14 @@ def findfileswithkb(kbarticle):
     '''
     find files that have a filename with KB number in it. May not guarantee to capture all related files.
     '''
-    global _wdblogger
+    global _wulogger
     
     result = []
 
     try:
         kbarticleint = int(kbarticle)
     except ValueError:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: findfileswithkb")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: findfileswithkb")
         return result
 
     wsuscursor = globs.DBWSUSCONN.cursor()
@@ -482,18 +482,18 @@ def findfileswithkb(kbarticle):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from findfileswithkb")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from findfileswithkb")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from findfileswithkb (" + str(kbarticle) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from findfileswithkb (" + str(kbarticle) + ")")
     wsuscursor.close()
     return result
 
 def findupdateinfo(updateid):
-    global _wdblogger
+    global _wulogger
 
     result = []
 
@@ -508,31 +508,31 @@ def findupdateinfo(updateid):
     check = wsuscursor.execute(tsql)
 
     if check is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from findupdateinfo")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] Did not find entries from findupdateinfo")
         wsuscursor.close()
         return result
 
     result = wsuscursor.fetchall()
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from findupdateinfo" + "(" + str(updateid) +")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from findupdateinfo" + "(" + str(updateid) +")")
     wsuscursor.close()
     return result
 
 def kbtosupersedingkb(kbarticle, filedigest):
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     try:
         kbarticleint = int(kbarticle)
     except ValueError:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: kbtosupersedingkb" + "(" + str(kbarticle) + ")")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: kbtosupersedingkb" + "(" + str(kbarticle) + ")")
         return result
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: kbtosupersedingkb")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: kbtosupersedingkb")
         return result
 
     updateinfo = []
@@ -561,24 +561,24 @@ def kbtosupersedingkb(kbarticle, filedigest):
     if len(updateinfo) != 0:
         kbsorted = list(sorted(set(updateinfo)))  
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from kbtosupersedingkb (" + str(kbarticle) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from kbtosupersedingkb (" + str(kbarticle) + ")")
     return kbsorted
 
 def kbtosupersededkb(kbarticle, filedigest):
-    global _wdblogger
+    global _wulogger
 
     result = []
 
     try:
         kbarticleint = int(kbarticle)
     except ValueError:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: kbtosupersededkb")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid int: kbtosupersededkb")
         return result
 
     hexfiledigest = verifyhex(filedigest)
 
     if hexfiledigest is None:
-        _wdblogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: kbtosupersededkb")
+        _wulogger.log(logging.DEBUG, "[WUAPIS] argument not valid hex: kbtosupersededkb")
         return result
 
     updateinfo = []
@@ -607,7 +607,7 @@ def kbtosupersededkb(kbarticle, filedigest):
     if len(updateinfo) != 0:
         kbsorted = list(sorted(set(updateinfo)))     
 
-    _wdblogger.log(logging.DEBUG, "[WUAPIS] Found entries from kbtosupersededkb (" + str(kbarticle) + ")")
+    _wulogger.log(logging.DEBUG, "[WUAPIS] Found entries from kbtosupersededkb (" + str(kbarticle) + ")")
     return kbsorted
 
 def updatewuentrysecedenceinfo():
@@ -627,7 +627,7 @@ def updatewuentrysecedenceinfo():
                     fattrs = getfiledigestattributeswodu(row[column])
 
                     if len(fattrs) == 0:
-                        _wdblogger.log(logging.DEBUG, "[WUAPIS] Possibly a DefinitionUpdate. Skipping...")
+                        _wulogger.log(logging.DEBUG, "[WUAPIS] Possibly a DefinitionUpdate. Skipping...")
                         continue
                     
                     kbarticle = fattrs[0][42]
@@ -665,7 +665,7 @@ def updatewuentrysecedenceinfo():
                         bamcursor.execute("END TRANSACTION")
                         bamcursor.execute("BEGIN TRANSACTION")
                 else:
-                    _wdblogger.log(logging.DEBUG, "[WUAPIS]  Skipping no KB...")
+                    _wulogger.log(logging.DEBUG, "[WUAPIS]  Skipping no KB...")
 
     bamcursor.execute("END TRANSACTION")
     bamcursor.close()

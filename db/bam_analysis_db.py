@@ -52,7 +52,7 @@ def prodvgtebyname(dbcursor, filename, prodversion):
 
     if len(result) == 0:
         _wdblogger.log(logging.DEBUG, "[BAMA] Did not find entries from prodvgtebyname")
-        return None
+        return result
 
     _wdblogger.log(logging.DEBUG, "[BAMA] Found entries from prodvgtebyname")
     return result
@@ -72,7 +72,7 @@ def prodvltebyname(dbcursor, filename, prodversion):
 
     if len(result) == 0:
         _wdblogger.log(logging.DEBUG, "[BAMA] Did not find entries from prodvltebyname")
-        return None
+        return result
 
     _wdblogger.log(logging.DEBUG, "[BAMA] Found entries from prodvltebyname")
     return result
@@ -92,7 +92,7 @@ def prodvltbyname(dbcursor, filename, prodversion):
 
     if len(result) == 0:
         _wdblogger.log(logging.DEBUG, "[BAMA] Did not find entries from prodvltebyname")
-        return None
+        return result
 
     _wdblogger.log(logging.DEBUG, "[BAMA] Found entries from prodvltebyname")
     return result
@@ -112,7 +112,7 @@ def prodvgtbyname(dbcursor, filename, prodversion):
 
     if len(result) == 0:
         _wdblogger.log(logging.DEBUG, "[BAMA] Did not find entries from prodvgtbyname")
-        return None
+        return []
 
     _wdblogger.log(logging.DEBUG, "[BAMA] Found entries from prodvgtbyname")
     return result
@@ -132,7 +132,7 @@ def prodvebyname(dbcursor, filename, prodversion):
 
     if len(result) == 0:
         _wdblogger.log(logging.DEBUG, "[BAMA] Did not find entries from prodvebyname")
-        return None
+        return result
 
     _wdblogger.log(logging.DEBUG, "[BAMA] Found entries from prodvebyname")
     return result
@@ -151,7 +151,7 @@ def wusamefn(dbcursor, filename):
 
     if len(result) == 0:
         _wdblogger.log(logging.DEBUG, "[BAMA] Did not find entries from wusamefn")
-        return None
+        return result
 
     _wdblogger.log(logging.DEBUG, "[BAMA] Found entries from wusamefn")
     return result
@@ -176,7 +176,7 @@ def getpathtoupdate(dbcursor, filedigest):
     
     if len(result) == 0:
         _wdblogger.log(logging.DEBUG, "[BAMA] Did not find entries from getpathtoupdate")
-        return None
+        return result
 
     diskpath = ""
     for row in result:
@@ -196,7 +196,7 @@ def getwuwithsamefnprodv(dbcursor, filename, prodversion):
 
     filelist = prodvebyname(dbcursor, filename, prodversion)
 
-    if filelist == None:
+    if len(filelist) == 0:
         return filelist
 
     updatelist = []
@@ -216,7 +216,7 @@ def getwuwithsamefnprodvgt(dbcursor, filename, prodversion):
 
     filelist = prodvgtbyname(dbcursor, filename, prodversion)
 
-    if filelist == None:
+    if len(filelist) == 0:
         return filelist
 
     updatelist = []
@@ -237,7 +237,7 @@ def getwuwithsamefnprodvlt(dbcursor, filename, prodversion):
 
     filelist = prodvltbyname(dbcursor, filename, prodversion)
 
-    if filelist == None:
+    if len(filelist) == 0:
         return filelist
 
     updatelist = []
@@ -257,7 +257,7 @@ def getwuwithsamefnprodvlte(dbcursor, filename, prodversion):
 
     filelist = prodvltebyname(dbcursor, filename, prodversion)
 
-    if filelist == None:
+    if len(filelist) == 0:
         return filelist
 
     updatelist = []
@@ -277,7 +277,7 @@ def getwuwithsamefnprodvgte(dbcursor, filename, prodversion):
 
     filelist = prodvgtebyname(dbcursor, filename, prodversion)
 
-    if filelist == None:
+    if len(filelist) == 0:
         return filelist
 
     updatelist = []
@@ -302,9 +302,25 @@ def getlistofpublicsym(dbcursor, filename):
 
     if len(result) == 0:
         _wdblogger.log(logging.DEBUG, "[BAMA] Did not find entries from wusamefn")
-        return None
+        return result
     
     return result
 
+def getsymsofsamefnprodv(dbcursor, filename, prodversion):
+    '''
+    Retrieve list of all unique public symbols PDBs with filename
+    '''
+    global _wdblogger
 
+    filelist = prodvebyname(dbcursor, filename, prodversion)
+
+    if len(filelist) == 0:
+        return filelist
+
+    symlist = []
+
+    for row in filelist:
+        if row["SymbolObtained"] != 0:
+            symlist.append(row["SymbolPath"])
     
+    return symlist

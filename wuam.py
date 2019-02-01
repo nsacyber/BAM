@@ -27,13 +27,16 @@ import argparse
 
 import sqlite3
 
-from support.utils import exitfunction, util_logconfig
-
 import wuapis
 
 import BamLogger
+
 import logging
+
 import multiprocessing as mp
+
+from support.utils import exitfunction, util_logconfig
+
 try:
     globs.DBWSUSCONN = pyodbc.connect(globs.connstr)
 except pyodbc.OperationalError as error:

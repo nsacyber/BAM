@@ -63,9 +63,11 @@ import multiprocessing as mp
 
 from support.utils import exitfunction, util_logconfig
 
-from db.wsuse_db import construct_tables, db_logconfig
+from db.wsuse_db import construct_tables, construct_post_tables, db_logconfig
 
 from ProcessPools import DBMgr, ExtractMgr, CleanMgr, SymMgr, mgr_logconfig
+
+from post.post_binskim import binskim_logconfig
 
 import globs
 
@@ -112,6 +114,14 @@ def parsecommandline(parser):
     parses arguments given to commandline
     '''
     parser.add_argument(
+        "-a", "--allanalysis",
+        action='store_true',
+        help="Perform all post-analysis. Requires -pa.")
+    parser.add_argument(
+        "-bsk", "--binskim",
+        action='store_true',
+        help="Perform BinSkim post-analysis. Requires -pa.")
+    parser.add_argument(
         "-c", "--createdbonly", action='store_true')
     parser.add_argument(
         "-gp", "--getpatches",
@@ -140,11 +150,34 @@ def parsecommandline(parser):
         "-p", "--patchpath", help="Path to location where Windows updates " +
         "(CAB/MSU) are stored. Must be given -x or --extract as well.")
     parser.add_argument(
+        "-pa", "--postanalysis",
+        action='store_true',
+        help="Perform post-analysis")
+    parser.add_argument(
         "-pd", "--patchdest",
         help="An optional destination where extracted PE files will be stored",
         nargs="?",
         type=str,
         default="extractedPatches")
+    parser.add_argument(
+        "-raf", "--reanalyzeaf",
+        action='store_true',
+        help="Reanalyze all files. Requires -pa.")
+    parser.add_argument(
+        "-rsf", "--reanalyzesf",
+        action='store_true',
+        help="Reanalyze single file. Requires -pa.")
+    parser.add_argument(
+        "-s", "--singleanalysis",
+        nargs="?",
+        type=str,
+        help="Perform post-analysis on single file. Requires -pa.")
+    parser.add_argument(
+        "-sd", "--singlediranalysis",
+        nargs="?",
+        type=str,
+        help="Perform post-analysis on all files within a directory." + 
+        "single file. Requires -pa.")
     parser.add_argument(
         "-sl", "--symlocal",
         help=("Path to location where local symbols are be stored. "
@@ -225,6 +258,7 @@ if __name__ == "__main__":
     util_logconfig(globqueue)
     db_logconfig(globqueue)
     mgr_logconfig(globqueue)
+    binskim_logconfig(globqueue)
 
     loggerProcess = mp.Process(target=BamLogger.log_listener, args=(globqueue, BamLogger.log_config))
     loggerProcess.start()
@@ -399,6 +433,40 @@ if __name__ == "__main__":
             DB.join()
 
             print("retrieving of Updates complete. Check WSUS_Update_data.db for update files")
+    elif ARGS.postanalysis and ARGS.symbolserver and (ARGS.singleanalysis or ARGS.singlediranalysis):
+        from post.post_binskim import binskimanalysis
+
+        fileorpatch = ''
+
+        if ARGS.singleanalysis:
+            fileordir = ARGS.singleanalysis
+        elif ARGS.singlediranalysis:
+            fileordir = []
+
+            for root, dummy, files, in os.walk(ARGS.singlediranalysis):
+                for file in files:
+                    filel = file.lower()
+                    if filel.endswith(".exe") or filel.endswith(".sys") \
+                        or filel.endswith(".dll"):
+                        fileordir.append(os.path.realpath(os.path.join(root,filel)))
+
+        cresult = construct_post_tables() 
+
+        if cresult:
+            print("Starting postanalysis.")
+            if ARGS.allanalysis:
+                if isinstance(fileordir, list):
+                    for file in fileordir:
+                        binskimanalysis(file, ARGS.symbolserver)
+                else:
+                    binskimanalysis(fileordir, ARGS.symbolserver)
+            
+            if ARGS.binskim:
+                dummy = ""
+            print("Completed postanalysis.")
+        else:
+            print("Issue constructing post tables.")            
+
     else:
         print("Invalid option -- view -h")
 
@@ -408,5 +476,6 @@ if __name__ == "__main__":
                                               GETSYMMIN))
 
     globs.DBCONN.close()
+    globs.DBCONN2.close()
     globqueue.put_nowait(None)
     loggerProcess.join()
