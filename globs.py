@@ -82,6 +82,19 @@ BINSKIMTABLE = ("CREATE TABLE IF NOT EXISTS BinSkimFiles " +
     "Result text, MessageId text, Message text, " +
     "timestamp text);")
 
+DIGISIGNTABLE = ("CREATE TABLE IF NOT EXISTS DigiSignFiles " +
+    "(FileName text, SHA256 text, SHA1 text, Status text," +
+    "StatusMessage text, SignatureType integer, IsOSBinary integer, " +
+    "SignerCertificateName text, SignerCertificateFriendlyName text, " +
+    "SignerCertificateIssuer text, SignerCertificateSerialNumber text, " +
+    "SignerCertificateNotBefore text, SignerCertificateNotAfter text, " +
+    "SignerCertificateThumbprint text, TimeStamperCertificateSubject text, " +
+    "TimeStamperCertificateFriendlyName text, TimeStamperCertificateIssuer text, " +
+    "TimeStamperCertificateSerialNumber text, TimeStamperCertificateNotBefore text, "+
+    "TimeStamperCertificateNotAfter text, TimeStamperCertificateThumbprint text, " +
+    "NumberOfCertsInSignerChain integer, NumberOfCertsInTimeStampChain integer, " +
+    "PsObjdata text, timestamp text);")
+
 # enable or disable debug output
 VERBOSITY = False
 

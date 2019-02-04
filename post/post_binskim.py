@@ -57,7 +57,7 @@ def binskimanalysis(file, sympath):
     basename = os.path.basename(file)
     bskjson = basename + "_" + strtime + "_binskim.json"
     
-    args = (".\\tools\\x64\\\\binskim\\binskim.exe analyze \"" + str(file) +
+    args = (".\\tools\\x64\\\\binskim\\binskim.exe analyze \"" + file +
     "\" --verbose --sympath \"Cache*" + sympath + "\" -o " + bskjson + " -p -f" )
     
     _bsklogger.log(logging.DEBUG, "[PBSK] Starting: " + args)
@@ -88,7 +88,15 @@ def binskimanalysis(file, sympath):
     dbcursor.execute("BEGIN TRANSACTION")
 
     with open(bskjson) as data_file:    
-        data = json.load(data_file)
+        data = None
+        try:
+            data = json.load(data_file)
+        except json.decoder.JSONDecodeError as error:
+            _bsklogger.log(logging.DEBUG, ("[PBSK] JSON error: " + error.msg))
+            dbcursor.execute("END TRANSACTION")
+            dbcursor.close()
+            return
+
         for entry in data["runs"][0]["results"]:
             if entry["ruleId"][:3] != "BA3":
                 # ignore ELF rules

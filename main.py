@@ -69,6 +69,8 @@ from ProcessPools import DBMgr, ExtractMgr, CleanMgr, SymMgr, mgr_logconfig
 
 from post.post_binskim import binskim_logconfig
 
+from post.post_cert import pcert_logconfig
+
 import globs
 
 import BamLogger
@@ -259,6 +261,7 @@ if __name__ == "__main__":
     db_logconfig(globqueue)
     mgr_logconfig(globqueue)
     binskim_logconfig(globqueue)
+    pcert_logconfig(globqueue)
 
     loggerProcess = mp.Process(target=BamLogger.log_listener, args=(globqueue, BamLogger.log_config))
     loggerProcess.start()
@@ -435,6 +438,7 @@ if __name__ == "__main__":
             print("retrieving of Updates complete. Check WSUS_Update_data.db for update files")
     elif ARGS.postanalysis and ARGS.symbolserver and (ARGS.singleanalysis or ARGS.singlediranalysis):
         from post.post_binskim import binskimanalysis
+        from post.post_cert import analyzepesignature
 
         fileorpatch = ''
 
@@ -458,8 +462,10 @@ if __name__ == "__main__":
                 if isinstance(fileordir, list):
                     for file in fileordir:
                         binskimanalysis(file, ARGS.symbolserver)
+                        analyzepesignature(file)
                 else:
                     binskimanalysis(fileordir, ARGS.symbolserver)
+                    analyzepesignature(file)
             
             if ARGS.binskim:
                 dummy = ""

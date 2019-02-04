@@ -75,6 +75,7 @@ def construct_post_tables():
 
     try:
         dbcursor.execute(globs.BINSKIMTABLE)
+        dbcursor.execute(globs.DIGISIGNTABLE)
         globs.DBCONN2.commit()
     except sqlite3.Error as error:
         print("Caught: " + error.args[0])
