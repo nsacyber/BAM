@@ -58,7 +58,7 @@ def binskimanalysis(file, sympath):
     bskjson = basename + "_" + strtime + "_binskim.json"
     
     args = (".\\tools\\x64\\\\binskim\\binskim.exe analyze \"" + file +
-    "\" --verbose --sympath \"Cache*" + sympath + "\" -o " + bskjson + " -p -f" )
+    "\" --verbose --sympath \"Cache*" + sympath + "\" -o \"" + bskjson + "\" -p -f" )
     
     _bsklogger.log(logging.DEBUG, "[PBSK] Starting: " + args)
     

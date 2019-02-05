@@ -34,7 +34,7 @@ def analyzepesignature(file):
     _pcertlogger.log(logging.DEBUG, "[PCERT] Working on " + file + " for certificate information and signature verification")
 
     pscmdpath = os.environ['systemdrive'] + '\\Windows\\system32\\WindowsPowerShell\\v1.0\\powershell.exe'
-    args = pscmdpath + ' -nologo -noprofile -executionpolicy bypass -Command ".\\post\\ps_dgsverify.ps1 -binarypath ' + file + '"'
+    args = pscmdpath + ' -nologo -noprofile -executionpolicy bypass -Command ".\\post\\ps_dgsverify.ps1 -binarypath \'' + file + '\'"'
 
     vfile = Path(pscmdpath)
     if not vfile.exists():
