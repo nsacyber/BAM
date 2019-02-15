@@ -1,6 +1,6 @@
 "You just throw it in and BAM! It works!"
 
-BAM! (Binary Analysis Metadata!) provides the user the ability to collection information on Windows Updates, 
+BAM! (Binary Analysis Metadata!) provides the user the ability to collect and analyze information on Windows Updates, 
 updated files (i.e., PE files), and symbol files. 
 
 Goal:
