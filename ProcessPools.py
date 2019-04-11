@@ -187,6 +187,8 @@ class ExtractMgr(threading.Thread):
                     future.add_done_callback(self.passresult)
 
                 self.jobsincoming.clear()
+            # ensure that executor and all futures shut down properly
+            executor.shutdown(wait=True)
 
         self.extmgrlogger.log(logging.DEBUG, "[EXMGR] **************part 1 done**********************")
         print("[EXMGR] **************part 1 done**********************")
@@ -200,13 +202,6 @@ class ExtractMgr(threading.Thread):
         elapsed = end-start
         print("elapsed time for part 1: " + str(elapsed))
 
-        # clean up the nestedCabs directory if it was created
-        ncabdir = self.pdir + "\\nestedCabs"
-        print("cleaning up nestedCabs directory")
-        try:
-            rmtree(ncabdir)
-        except FileNotFoundError:
-            print("ncabdir: " + str(ncabdir) +  " does not exist")
 
     @staticmethod
     def verifyentry(src, sha256, sha1, logger):
@@ -392,16 +387,26 @@ class ExtractMgr(threading.Thread):
                 return deliverables
 
             deliverables = ((newdir, []), hashes[0], hashes[1])
-        else:
 
+            # if nothing was extracted, remove the directory to clean up
+            try:
+                os.rmdir(newdir)
+            except OSError:
+                pass
+        else:
             if not validatecab(str(src)):
                 logmsg = "[EXMGR] invalid file"
                 extlogger.log(logging.DEBUG, logmsg)
                 return None
 
             # make new directory to hold extracted files
-
-            newdir = (dst + "\\" + newname).split(".cab")[0]
+            newdir = ""
+            # if this is true, this must be a nested cab file
+            if dst in src:
+                newdir = str(os.path.dirname(src))
+            # otherwise the cab is brand new and should create a newdir in dst
+            else:
+                newdir = (dst + "\\" + newname).split(".cab")[0]
             try:
                 os.mkdir(newdir)
             except FileExistsError:
@@ -413,13 +418,6 @@ class ExtractMgr(threading.Thread):
                 cls.performcabextract("*.exe", src, newdir, extlogger)
                 cls.performcabextract("*.sys", src, newdir, extlogger)
 
-            # if nothing was extracted, remove the directory to clean up
-            try:
-                os.rmdir(newdir)
-            except OSError:
-                pass
-
-            # prep deliverables for return
             deliverables = ((newdir, []), hashes[0], hashes[1])
 
             # search through rest of .cab for nested cabs or msus to extract
@@ -441,7 +439,8 @@ class ExtractMgr(threading.Thread):
                         # make a new directory to store the nested cab
                         # nested cabs with the same name may exists, keep contents
                         # under the newly created extracted directory for update
-                        ncabdir = pdir + "\\nestedCabs"
+                        parentdir = src.split("\\")[-1][0:-4]
+                        ncabdir = str(dst) + "\\" + str(parentdir) + "\\" + str(potentialfile)[0:-4]
 
                         if not os.path.exists(ncabdir):
                             try:
@@ -453,6 +452,8 @@ class ExtractMgr(threading.Thread):
                                 extlogger.log(logging.DEBUG, logmsg)
                                 break
 
+                        logmsg = "[EXMGR] beginning extraction of nestedcab: " + str(src)
+                        extlogger.log(logging.DEBUG, logmsg)
                         extractstdout = cls.performcabextract(potentialfile, src, str(ncabdir), extlogger)
 
                         if not extractstdout is None:
@@ -589,6 +590,8 @@ class CleanMgr(threading.Thread):
                 self.jobsready.clear()
 
                 self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] items left in cleanmgr queue: " + str(len(self.jobs)))
+            # ensure that executor and all futures shut down properly
+            executor.shutdown(wait=True)
 
         self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] *************part 2 done*****************")
         print("[CLNMGR] **************part 2 done**********************")
@@ -843,6 +846,8 @@ class SymMgr(threading.Thread):
                 self.jobsready.clear()
 
                 self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] items left in symmgr queue: " + str(len(self.jobs)))
+            # ensure that executor and all futures shut down properly
+            executor.shutdown(wait=True)
 
         self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] *************part 3 done*****************")
         print("[SYMMGR] **************part 3 done**********************")
