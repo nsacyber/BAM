@@ -314,6 +314,11 @@ class ExtractMgr(threading.Thread):
         deliverables = None
         newpath = ''
 
+        # indicates that this cab is one of the new update version that MS started using for v1809 and forward
+        # can't handle this type of update yet, so skip it.
+        if "PSFX" in src or "psfx" in src:
+            return deliverables
+
         hashes = getfilehashes(src)
 
         if hashes is None:
@@ -366,6 +371,11 @@ class ExtractMgr(threading.Thread):
 
         # initialize deliverables
         deliverables = None
+
+        # indicates that this cab is one of the new update version that MS started using for v1809 and forward
+        # can't handle this type of update yet, so skip it.
+        if "PSFX" in src or "psfx" in src:
+            return deliverables
 
         newname = src.split("\\")[-1].lstrip()
 
@@ -429,6 +439,11 @@ class ExtractMgr(threading.Thread):
                     return deliverables
 
                 stroutput = listing.decode("ascii").split("\r\n")
+
+                # indicates that this cab is one of the new update version that MS started using for v1809 and forward
+                # can't handle this type of update yet, so skip it.
+                if "psfx" in stroutput[3] or "PSFX" in stroutput[4]:
+                    return deliverables
 
                 for line in stroutput:
                     if line.endswith(".cab") or line.endswith(".msu"):

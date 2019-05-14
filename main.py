@@ -14,7 +14,9 @@ if sys.version_info[0] <= 3 and sys.version_info[1] < 7:
 import winreg
 # https://blogs.msdn.microsoft.com/karinm/2008/06/05/how-visual-studio-reads-windows-sdk-registry-keys/
 # says SDK can be checked for in registry, and own verification indicates that this is the case.
-# check for Windows SDK
+# check for Windows SDK. Old link died. Here is another one that still lives: 
+# https://social.msdn.microsoft.com/Forums/windowsdesktop/en-US/6eb56ae2-831f-475f-b0c9-97aa7de53add/
+# how-to-detect-installation-directory-of-windows-sdk-or-psdk?forum=windowssdk
 try:
     key1 = winreg.OpenKeyEx(key=winreg.HKEY_LOCAL_MACHINE, sub_key="SOFTWARE")
     key2 = winreg.OpenKeyEx(key=key1, sub_key="WOW6432Node")
@@ -465,7 +467,7 @@ if __name__ == "__main__":
                         analyzepesignature(file)
                 else:
                     binskimanalysis(fileordir, ARGS.symbolserver)
-                    analyzepesignature(file)
+                    analyzepesignature(fileordir)
             
             if ARGS.binskim:
                 dummy = ""
