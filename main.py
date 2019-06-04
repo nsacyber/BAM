@@ -11,48 +11,6 @@ import sys
 if sys.version_info[0] <= 3 and sys.version_info[1] < 7:
     sys.exit("This script requires at least Python version 3.7.")
 
-import winreg
-# https://blogs.msdn.microsoft.com/karinm/2008/06/05/how-visual-studio-reads-windows-sdk-registry-keys/
-# says SDK can be checked for in registry, and own verification indicates that this is the case.
-# check for Windows SDK. Old link died. Here is another one that still lives: 
-# https://social.msdn.microsoft.com/Forums/windowsdesktop/en-US/6eb56ae2-831f-475f-b0c9-97aa7de53add/
-# how-to-detect-installation-directory-of-windows-sdk-or-psdk?forum=windowssdk
-try:
-    key1 = winreg.OpenKeyEx(key=winreg.HKEY_LOCAL_MACHINE, sub_key="SOFTWARE")
-    key2 = winreg.OpenKeyEx(key=key1, sub_key="WOW6432Node")
-    key3 = winreg.OpenKeyEx(key=key2, sub_key="Microsoft")
-    key4 = winreg.OpenKeyEx(key=key3, sub_key="Microsoft SDKs")
-    key5 = winreg.OpenKeyEx(key=key4, sub_key="Windows")
-    key6 = winreg.OpenKeyEx(key=key5, sub_key="v10.0")
-    if winreg.QueryValueEx(key6, "ProductVersion")[0] < "10.0.17763":
-        sys.exit("This script requires at least Windows SDK 10.0.17763")
-    winreg.CloseKey(key1)
-    winreg.CloseKey(key2)
-    winreg.CloseKey(key3)
-    winreg.CloseKey(key4)
-    winreg.CloseKey(key5)
-    winreg.CloseKey(key6)
-except OSError:
-    sys.exit("This script requires Windows SDK 10.0.17763 to be installed")
-
-# check for Windows Debugging tools
-try:
-    key1 = winreg.OpenKeyEx(key=winreg.HKEY_LOCAL_MACHINE, sub_key="SOFTWARE")
-    key2 = winreg.OpenKeyEx(key=key1, sub_key="WOW6432Node")
-    key3 = winreg.OpenKeyEx(key=key2, sub_key="Microsoft")
-    key4 = winreg.OpenKeyEx(key=key3, sub_key="Windows Kits")
-    key5 = winreg.OpenKeyEx(key=key4, sub_key="Installed Roots")
-    if winreg.QueryValueEx(key5, "WindowsDebuggersRoot10")[0] == '':
-        sys.exit("This script requires Windows Debugging tools to be installed")
-    winreg.CloseKey(key1)
-    winreg.CloseKey(key2)
-    winreg.CloseKey(key3)
-    winreg.CloseKey(key4)
-    winreg.CloseKey(key5)
-except OSError:
-    sys.exit("This script requires Windows Debugging tools to be installed")
-
-
 import argparse
 
 from pathlib import Path

@@ -19,6 +19,8 @@ import traceback as tb
 
 import logging, logging.handlers
 
+import re
+
 from concurrent.futures import ProcessPoolExecutor
 
 from pathlib import Path
@@ -599,7 +601,9 @@ class CleanMgr(threading.Thread):
                             filepath = Path(os.path.join(root, file)).resolve()
                             self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] assigning cleaning job for " + str(filepath))
                             
-                            future = executor.submit(self.cleantask, str(filepath))
+                            updateid = re.search("([A-F0-9]{40})", str(filepath)).group(1)
+
+                            future = executor.submit(self.cleantask, str(filepath), updateid)
                             future.add_done_callback(self.passresult)
 
                 self.jobsready.clear()
@@ -621,7 +625,7 @@ class CleanMgr(threading.Thread):
         print("elapsed time for part 2: " + str(elapsedtime))
 
     @classmethod
-    def cleantask(cls, jobfile):
+    def cleantask(cls, jobfile, updateid):
         '''
         task to clean up folder before submitting jobs for symbol search
         if item is removed in cleaning, None is returned, else return item
@@ -757,7 +761,7 @@ class CleanMgr(threading.Thread):
 
             unpefile.close()
 
-            results = ((str(jobfile), None), hashes[0], hashes[1], infolist)
+            results = ((str(jobfile), updateid), hashes[0], hashes[1], infolist)
         else:
             # if jobfile is not a PE, then check if it's a cab. If not a cab, remove it.
             if not validatecab(str(jobfile)):
@@ -976,13 +980,13 @@ class DBMgr(threading.Thread):
         self.dblogger.log(logging.DEBUG, "[DBMGR] writing update for (" + str(file) + ")")
         wsuse_db.writeupdate(file, sha256, sha1, conn=self.dbconn)
 
-    def writebinary(self, file, sha256, sha1, infolist):
+    def writebinary(self, file, updateid, sha256, sha1, infolist):
         '''
         performs write updates to db for Binary files
         should use function in wsuse_db
         '''
         self.dblogger.log(logging.DEBUG, "[DBMGR] writing binary for (" + str(file) + ")")
-        wsuse_db.writebinary(file, sha256, sha1, infolist, conn=self.dbconn)
+        wsuse_db.writebinary(file, updateid, sha256, sha1, infolist, conn=self.dbconn)
 
     def writesym(self, file, symchkerr, symchkout, sha256, sha1, infolist):
         '''
@@ -1038,7 +1042,7 @@ class DBMgr(threading.Thread):
                     self.writeupdate(task[1][0], task[2], task[3])
                 elif task[0] == "binary":
                     self.dbrecordscnt += 1
-                    self.writebinary(task[1][0], task[2], task[3], task[4])
+                    self.writebinary(task[1][0], task[1][1], task[2], task[3], task[4])
                 elif task[0] == "symbol":
                     self.dbrecordscnt += 1
                     self.writesym(task[1][0], task[1][1], task[1][2], task[2], task[3], task[4])
