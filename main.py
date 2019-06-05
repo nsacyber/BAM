@@ -404,7 +404,7 @@ if __name__ == "__main__":
                         findbannedapis(file)
                 else:
                     binskimanalysis(fileordir, ARGS.symbolserver)
-                    analyzepesignature(file)
+                    analyzepesignature(fileordir)
             
             if ARGS.binskim:
                 dummy = ""

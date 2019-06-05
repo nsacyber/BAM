@@ -19,6 +19,8 @@ import traceback as tb
 
 import logging, logging.handlers
 
+import re
+
 from concurrent.futures import ProcessPoolExecutor
 
 from pathlib import Path
@@ -187,6 +189,8 @@ class ExtractMgr(threading.Thread):
                     future.add_done_callback(self.passresult)
 
                 self.jobsincoming.clear()
+            # ensure that executor and all futures shut down properly
+            executor.shutdown(wait=True)
 
         self.extmgrlogger.log(logging.DEBUG, "[EXMGR] **************part 1 done**********************")
         print("[EXMGR] **************part 1 done**********************")
@@ -200,13 +204,6 @@ class ExtractMgr(threading.Thread):
         elapsed = end-start
         print("elapsed time for part 1: " + str(elapsed))
 
-        # clean up the nestedCabs directory if it was created
-        ncabdir = self.pdir + "\\nestedCabs"
-        print("cleaning up nestedCabs directory")
-        try:
-            rmtree(ncabdir)
-        except FileNotFoundError:
-            print("ncabdir: " + str(ncabdir) +  " does not exist")
 
     @staticmethod
     def verifyentry(src, sha256, sha1, logger):
@@ -321,6 +318,11 @@ class ExtractMgr(threading.Thread):
         deliverables = None
         newpath = ''
 
+        # indicates that this cab is one of the new update version that MS started using for v1809 and forward
+        # can't handle this type of update yet, so skip it.
+        if "PSFX" in src or "psfx" in src:
+            return deliverables
+
         hashes = getfilehashes(src)
 
         if hashes is None:
@@ -374,6 +376,11 @@ class ExtractMgr(threading.Thread):
         # initialize deliverables
         deliverables = None
 
+        # indicates that this cab is one of the new update version that MS started using for v1809 and forward
+        # can't handle this type of update yet, so skip it.
+        if "PSFX" in src or "psfx" in src:
+            return deliverables
+
         newname = src.split("\\")[-1].lstrip()
 
         # If the files being worked on is a PE file
@@ -394,20 +401,29 @@ class ExtractMgr(threading.Thread):
                 return deliverables
 
             deliverables = ((newdir, []), hashes[0], hashes[1])
-        else:
 
+            # if nothing was extracted, remove the directory to clean up
+            try:
+                os.rmdir(newdir)
+            except OSError:
+                pass
+        else:
             if not validatecab(str(src)):
                 logmsg = "[EXMGR] invalid file"
                 extlogger.log(logging.DEBUG, logmsg)
                 return None
 
             # make new directory to hold extracted files
-            newdir = ''
-
-            if ".cab" in newname:
-                newdir = (dst + "\\" + newname).split(".cab")[0]
-            elif ".msu" in newname:
-                newdir = (dst + "\\" + newname).split(".msu")[0]
+            newdir = ""
+            # if this is true, this must be a nested cab file
+            if dst in src:
+                newdir = str(os.path.dirname(src))
+            # otherwise the cab is brand new and should create a newdir in dst
+            else:
+                if ".cab" in newname:
+                    newdir = (dst + "\\" + newname).split(".cab")[0]
+                elif ".msu" in newname:
+                    newdir = (dst + "\\" + newname).split(".msu")[0]
 
             try:
                 os.mkdir(newdir)
@@ -420,13 +436,6 @@ class ExtractMgr(threading.Thread):
                 cls.performcabextract("*.exe", src, newdir, extlogger)
                 cls.performcabextract("*.sys", src, newdir, extlogger)
 
-            # if nothing was extracted, remove the directory to clean up
-            try:
-                os.rmdir(newdir)
-            except OSError:
-                pass
-
-            # prep deliverables for return
             deliverables = ((newdir, []), hashes[0], hashes[1])
 
             # search through rest of .cab for nested cabs or msus to extract
@@ -439,6 +448,11 @@ class ExtractMgr(threading.Thread):
 
                 stroutput = listing.decode("ascii").split("\r\n")
 
+                # indicates that this cab is one of the new update version that MS started using for v1809 and forward
+                # can't handle this type of update yet, so skip it.
+                if "psfx" in stroutput[3] or "PSFX" in stroutput[4]:
+                    return deliverables
+
                 for line in stroutput:
                     if line.endswith(".cab") or line.endswith(".msu"):
 
@@ -448,7 +462,8 @@ class ExtractMgr(threading.Thread):
                         # make a new directory to store the nested cab
                         # nested cabs with the same name may exists, keep contents
                         # under the newly created extracted directory for update
-                        ncabdir = pdir + "\\nestedCabs"
+                        parentdir = src.split("\\")[-1][0:-4]
+                        ncabdir = str(dst) + "\\" + str(parentdir) + "\\" + str(potentialfile)[0:-4]
 
                         if not os.path.exists(ncabdir):
                             try:
@@ -460,6 +475,8 @@ class ExtractMgr(threading.Thread):
                                 extlogger.log(logging.DEBUG, logmsg)
                                 break
 
+                        logmsg = "[EXMGR] beginning extraction of nestedcab: " + str(src)
+                        extlogger.log(logging.DEBUG, logmsg)
                         extractstdout = cls.performcabextract(potentialfile, src, str(ncabdir), extlogger)
 
                         if not extractstdout is None:
@@ -590,12 +607,16 @@ class CleanMgr(threading.Thread):
                             filepath = Path(os.path.join(root, file)).resolve()
                             self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] assigning cleaning job for " + str(filepath))
                             
-                            future = executor.submit(self.cleantask, str(filepath))
+                            updateid = re.search("([A-F0-9]{40})", str(filepath)).group(1)
+
+                            future = executor.submit(self.cleantask, str(filepath), updateid)
                             future.add_done_callback(self.passresult)
 
                 self.jobsready.clear()
 
                 self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] items left in cleanmgr queue: " + str(len(self.jobs)))
+            # ensure that executor and all futures shut down properly
+            executor.shutdown(wait=True)
 
         self.clnmgrlogger.log(logging.DEBUG, "[CLNMGR] *************part 2 done*****************")
         print("[CLNMGR] **************part 2 done**********************")
@@ -610,7 +631,7 @@ class CleanMgr(threading.Thread):
         print("elapsed time for part 2: " + str(elapsedtime))
 
     @classmethod
-    def cleantask(cls, jobfile):
+    def cleantask(cls, jobfile, updateid):
         '''
         task to clean up folder before submitting jobs for symbol search
         if item is removed in cleaning, None is returned, else return item
@@ -746,7 +767,7 @@ class CleanMgr(threading.Thread):
 
             unpefile.close()
 
-            results = ((str(jobfile), None), hashes[0], hashes[1], infolist)
+            results = ((str(jobfile), updateid), hashes[0], hashes[1], infolist)
         else:
             # if jobfile is not a PE, then check if it's a cab. If not a cab, remove it.
             if not validatecab(str(jobfile)):
@@ -850,6 +871,8 @@ class SymMgr(threading.Thread):
                 self.jobsready.clear()
 
                 self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] items left in symmgr queue: " + str(len(self.jobs)))
+            # ensure that executor and all futures shut down properly
+            executor.shutdown(wait=True)
 
         self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] *************part 3 done*****************")
         print("[SYMMGR] **************part 3 done**********************")
@@ -963,13 +986,13 @@ class DBMgr(threading.Thread):
         self.dblogger.log(logging.DEBUG, "[DBMGR] writing update for (" + str(file) + ")")
         wsuse_db.writeupdate(file, sha256, sha1, conn=self.dbconn)
 
-    def writebinary(self, file, sha256, sha1, infolist):
+    def writebinary(self, file, updateid, sha256, sha1, infolist):
         '''
         performs write updates to db for Binary files
         should use function in wsuse_db
         '''
         self.dblogger.log(logging.DEBUG, "[DBMGR] writing binary for (" + str(file) + ")")
-        wsuse_db.writebinary(file, sha256, sha1, infolist, conn=self.dbconn)
+        wsuse_db.writebinary(file, updateid, sha256, sha1, infolist, conn=self.dbconn)
 
     def writesym(self, file, symchkerr, symchkout, sha256, sha1, infolist):
         '''
@@ -1025,7 +1048,7 @@ class DBMgr(threading.Thread):
                     self.writeupdate(task[1][0], task[2], task[3])
                 elif task[0] == "binary":
                     self.dbrecordscnt += 1
-                    self.writebinary(task[1][0], task[2], task[3], task[4])
+                    self.writebinary(task[1][0], task[1][1], task[2], task[3], task[4])
                 elif task[0] == "symbol":
                     self.dbrecordscnt += 1
                     self.writesym(task[1][0], task[1][1], task[1][2], task[2], task[3], task[4])

@@ -253,7 +253,7 @@ def writeupdate(file, sha256, sha1, \
     dbcursor.close()
     return True
 
-def writebinary(file, sha256, sha1, infolist,  \
+def writebinary(file, updateid, sha256, sha1, infolist,  \
         dbname=globs.PATCHEDFILESDBNAME, conn=globs.DBCONN):
     '''
     file - update file to add or update db with
@@ -292,7 +292,7 @@ def writebinary(file, sha256, sha1, infolist,  \
          # Language,PrivateBuild
          infolist['Language'], infolist['PrivateBuild'],
          # SpecialBuild,BuiltwithDbgInfo,StrippedPE,UpdateId,Ignored
-         infolist['SpecialBuild'], str(infolist['builtwithdbginfo']), int(infolist['strippedpe']), None, int(False)))
+         infolist['SpecialBuild'], str(infolist['builtwithdbginfo']), int(infolist['strippedpe']), updateid, int(False)))
 
     dbcursor.close()
     return True
