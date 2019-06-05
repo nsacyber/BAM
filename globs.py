@@ -95,6 +95,10 @@ DIGISIGNTABLE = ("CREATE TABLE IF NOT EXISTS DigiSignFiles " +
     "NumberOfCertsInSignerChain integer, NumberOfCertsInTimeStampChain integer, " +
     "PsObjdata text, timestamp text);")
 
+BANNEDTABLE = ("CREATE TABLE IF NOT EXISTS BannedApiFiles " +
+    "(FileName text, SHA256 text, SHA1 text, ModuleName text," +
+    "BannedApiUsed text, timestamp text);")
+
 # enable or disable debug output
 VERBOSITY = False
 

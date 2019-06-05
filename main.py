@@ -11,46 +11,6 @@ import sys
 if sys.version_info[0] <= 3 and sys.version_info[1] < 7:
     sys.exit("This script requires at least Python version 3.7.")
 
-import winreg
-# https://blogs.msdn.microsoft.com/karinm/2008/06/05/how-visual-studio-reads-windows-sdk-registry-keys/
-# says SDK can be checked for in registry, and own verification indicates that this is the case.
-# check for Windows SDK
-try:
-    key1 = winreg.OpenKeyEx(key=winreg.HKEY_LOCAL_MACHINE, sub_key="SOFTWARE")
-    key2 = winreg.OpenKeyEx(key=key1, sub_key="WOW6432Node")
-    key3 = winreg.OpenKeyEx(key=key2, sub_key="Microsoft")
-    key4 = winreg.OpenKeyEx(key=key3, sub_key="Microsoft SDKs")
-    key5 = winreg.OpenKeyEx(key=key4, sub_key="Windows")
-    key6 = winreg.OpenKeyEx(key=key5, sub_key="v10.0")
-    if winreg.QueryValueEx(key6, "ProductVersion")[0] < "10.0.17763":
-        sys.exit("This script requires at least Windows SDK 10.0.17763")
-    winreg.CloseKey(key1)
-    winreg.CloseKey(key2)
-    winreg.CloseKey(key3)
-    winreg.CloseKey(key4)
-    winreg.CloseKey(key5)
-    winreg.CloseKey(key6)
-except OSError:
-    sys.exit("This script requires Windows SDK 10.0.17763 to be installed")
-
-# check for Windows Debugging tools
-try:
-    key1 = winreg.OpenKeyEx(key=winreg.HKEY_LOCAL_MACHINE, sub_key="SOFTWARE")
-    key2 = winreg.OpenKeyEx(key=key1, sub_key="WOW6432Node")
-    key3 = winreg.OpenKeyEx(key=key2, sub_key="Microsoft")
-    key4 = winreg.OpenKeyEx(key=key3, sub_key="Windows Kits")
-    key5 = winreg.OpenKeyEx(key=key4, sub_key="Installed Roots")
-    if winreg.QueryValueEx(key5, "WindowsDebuggersRoot10")[0] == '':
-        sys.exit("This script requires Windows Debugging tools to be installed")
-    winreg.CloseKey(key1)
-    winreg.CloseKey(key2)
-    winreg.CloseKey(key3)
-    winreg.CloseKey(key4)
-    winreg.CloseKey(key5)
-except OSError:
-    sys.exit("This script requires Windows Debugging tools to be installed")
-
-
 import argparse
 
 from pathlib import Path
@@ -71,38 +31,11 @@ from post.post_binskim import binskim_logconfig
 
 from post.post_cert import pcert_logconfig
 
+from post.post_banned import pbanned_logconfig
+
 import globs
 
 import BamLogger
-# ************************************************************
-# Requirements:
-#     Minimal Python Version: 3.7
-#     SQLite
-#     pefile
-#     Windows SDK/WDK (expand.exe and symcheck.exe)
-
-# Extraction tools:
-#     expand.exe
-
-# Description:
-# takes WSUS updates files and extracts PE files from them in order to obtain the symbols
-# files. Also stores various metadata on update, PE, and pdb files in SQLITE database
-# so that information is accessible.
-
-# more future updates:
-# Handle all language version for patches/binaries/pdb.
-# If using expand.exe and symhck.exe, VERIFY that the found binaries are signed
-# by Microsoft (i.e., check root cert).
-# Enable functionality for single cab file.
-
-
-# Two methods:
-# * use externals tools
-# * use open source tools
-
-# HOW-TO-USE:
-# 1) WSUSContent directory  <---- first
-# ************************************************************
 
 def displayhelp(parserh):
     '''
@@ -232,6 +165,14 @@ def checkdirectoryexist(direxist):
     mainlogger.log(logging.DEBUG, "[MAIN] Directory ("+ direxist + ") results were " + str(int(result)))
     return result
 
+def setuplogconfig(globqueue):
+    util_logconfig(globqueue)
+    db_logconfig(globqueue)
+    mgr_logconfig(globqueue)
+    binskim_logconfig(globqueue)
+    pcert_logconfig(globqueue)
+    pbanned_logconfig(globqueue)
+
 if __name__ == "__main__":
 
     import time
@@ -257,11 +198,7 @@ if __name__ == "__main__":
     mainlogger.addHandler(qh)
     mainlogger.setLevel(logging.DEBUG)
 
-    util_logconfig(globqueue)
-    db_logconfig(globqueue)
-    mgr_logconfig(globqueue)
-    binskim_logconfig(globqueue)
-    pcert_logconfig(globqueue)
+    setuplogconfig(globqueue)
 
     loggerProcess = mp.Process(target=BamLogger.log_listener, args=(globqueue, BamLogger.log_config))
     loggerProcess.start()
@@ -271,7 +208,7 @@ if __name__ == "__main__":
 
     # ARGS.file currently not in use, way to extract single cab not yet developed
     if ARGS.extract and (ARGS.patchpath or ARGS.file):
-        # Clean-slate (first time) / Continous use or reconstruct DB
+        # Clean-slate (first time) / Continuous use or reconstruct DB
         # (internet or no internet)
         print("Extracting updates and retrieving symbols")
 
@@ -439,6 +376,7 @@ if __name__ == "__main__":
     elif ARGS.postanalysis and ARGS.symbolserver and (ARGS.singleanalysis or ARGS.singlediranalysis):
         from post.post_binskim import binskimanalysis
         from post.post_cert import analyzepesignature
+        from post.post_banned import findbannedapis
 
         fileorpatch = ''
 
@@ -463,6 +401,7 @@ if __name__ == "__main__":
                     for file in fileordir:
                         binskimanalysis(file, ARGS.symbolserver)
                         analyzepesignature(file)
+                        findbannedapis(file)
                 else:
                     binskimanalysis(fileordir, ARGS.symbolserver)
                     analyzepesignature(file)
@@ -478,8 +417,8 @@ if __name__ == "__main__":
 
     print(("Time to extract ({})," +
            "Time to checkbin ({})," +
-           "Time to get symbols ({})").format(EXTRACTMIN, CHECKBINMIN,
-                                              GETSYMMIN))
+           "Time to get symbols ({})").format(EXTRACTMIN, CHECKBINMIN-EXTRACTMIN,
+                                              GETSYMMIN-CHECKBINMIN-EXTRACTMIN))
 
     globs.DBCONN.close()
     globs.DBCONN2.close()
