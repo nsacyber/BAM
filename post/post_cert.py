@@ -52,56 +52,65 @@ def analyzepesignature(file):
 
     _pcertlogger.log(logging.DEBUG, "[PCERT] Starting: " + args)
 
-    with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as dgsverify:
-        rawout, dummy = dgsverify.communicate()
-        pecerts = None
-        try:
-            pecerts = json.loads(rawout)
-        except json.decoder.JSONDecodeError as error:
-            _pcertlogger.log(logging.DEBUG, "[PCERT] JSON Error: "  + error.msg)
-            return
+    try:
+        with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as dgsverify:
+            rawout, dummy = dgsverify.communicate()
+            pecerts = None
+            try:
+                pecerts = json.loads(rawout)
+            except json.decoder.JSONDecodeError as error:
+                _pcertlogger.log(logging.DEBUG, "[PCERT] JSON Error: "  + error.msg)
+                return
 
 
 
-        try:
-            strtime = str(time())
-            isosbinary = False
-            if pecerts["IsOSBinary"] == "True":
-                isosbinary = True
+            try:
+                strtime = str(time())
+                isosbinary = False
+                if pecerts["IsOSBinary"] == "True":
+                    isosbinary = True
 
-            dbcursor = DBCONN2.cursor()
+                dbcursor = DBCONN2.cursor()
 
-            dbcursor.execute("BEGIN TRANSACTION")
-                
-            dbcursor.execute(
-                "INSERT INTO " + "DigiSignFiles" + " VALUES (" + "?," * 24 + "?)",
-                # FileName, SHA256, SHA1, Status, StatusMessage
-                (file, hashes[0], hashes[1], pecerts["Status"], pecerts["StatusMessage"],
-                # SignatureType, IsOSBinary, SignerCertificateName
-                int(pecerts["SignatureType"]), int(isosbinary), pecerts["SignerCertificateName"],
-                # SignerCertificateFriendlyName, SignerCertificateIssuer
-                pecerts["SignerCertificateFriendlyName"], pecerts["SignerCertificateIssuer"],
-                # SignerCertificateSerialNumber
-                pecerts["SignerCertificateSerialNumber"],
-                # SignerCertificateNotBefore, SignerCertificateNotAfter
-                pecerts["SignerCertificateNotBefore"], pecerts["SignerCertificateNotAfter"],
-                # SignerCertificateThumbprint, TimeStamperCertificateSubject
-                pecerts["SignerCertificateThumbprint"], pecerts["TimeStamperCertificateSubject"],
-                # TimeStamperCertificateFriendlyName, TimeStamperCertificateIssuer
-                pecerts["TimeStamperCertificateFriendlyName"], pecerts["TimeStamperCertificateIssuer"],
-                # TimeStamperCertificateSerialNumber, TimeStamperCertificateNotBefore
-                pecerts["TimeStamperCertificateSerialNumber"], pecerts["TimeStamperCertificateNotBefore"],
-                # TimeStamperCertificateNotAfter, TimeStamperCertificateThumbprint
-                pecerts["TimeStamperCertificateNotAfter"], pecerts["TimeStamperCertificateThumbprint"],
-                # NumberOfCertsInSignerChain, NumberOfCertsInTimeStampChain
-                int(pecerts["NumberOfCertsInSignerChain"]), int(pecerts["NumberOfCertsInTimeStampChain"]),
-                # PsObjdata, 
-                pecerts["PsObjData"], strtime))
-                
-            dbcursor.execute("END TRANSACTION")
+                dbcursor.execute("BEGIN TRANSACTION")
+                    
+                dbcursor.execute(
+                    "INSERT INTO " + "DigiSignFiles" + " VALUES (" + "?," * 24 + "?)",
+                    # FileName, SHA256, SHA1, Status, StatusMessage
+                    (file, hashes[0], hashes[1], pecerts["Status"], pecerts["StatusMessage"],
+                    # SignatureType, IsOSBinary, SignerCertificateName
+                    int(pecerts["SignatureType"]), int(isosbinary), pecerts["SignerCertificateName"],
+                    # SignerCertificateFriendlyName, SignerCertificateIssuer
+                    pecerts["SignerCertificateFriendlyName"], pecerts["SignerCertificateIssuer"],
+                    # SignerCertificateSerialNumber
+                    pecerts["SignerCertificateSerialNumber"],
+                    # SignerCertificateNotBefore, SignerCertificateNotAfter
+                    pecerts["SignerCertificateNotBefore"], pecerts["SignerCertificateNotAfter"],
+                    # SignerCertificateThumbprint, TimeStamperCertificateSubject
+                    pecerts["SignerCertificateThumbprint"], pecerts["TimeStamperCertificateSubject"],
+                    # TimeStamperCertificateFriendlyName, TimeStamperCertificateIssuer
+                    pecerts["TimeStamperCertificateFriendlyName"], pecerts["TimeStamperCertificateIssuer"],
+                    # TimeStamperCertificateSerialNumber, TimeStamperCertificateNotBefore
+                    pecerts["TimeStamperCertificateSerialNumber"], pecerts["TimeStamperCertificateNotBefore"],
+                    # TimeStamperCertificateNotAfter, TimeStamperCertificateThumbprint
+                    pecerts["TimeStamperCertificateNotAfter"], pecerts["TimeStamperCertificateThumbprint"],
+                    # NumberOfCertsInSignerChain, NumberOfCertsInTimeStampChain
+                    int(pecerts["NumberOfCertsInSignerChain"]), int(pecerts["NumberOfCertsInTimeStampChain"]),
+                    # PsObjdata, 
+                    pecerts["PsObjData"], strtime))
+                    
+                dbcursor.execute("END TRANSACTION")
 
-            dbcursor.close()
-        except sqlite3.Error as error:
-            _pcertlogger.log(logging.DEBUG, ("[PCERT] INSERT Certificate/Digital Signature Information error: " + error.args[0]))
+                dbcursor.close()
+            except sqlite3.Error as error:
+                _pcertlogger.log(logging.DEBUG, ("[PCERT] INSERT Certificate/Digital Signature Information error: " + error.args[0]))
+
+    except subprocess.CalledProcessError as error:
+        logmsg = ("[PCERT] {-} Skipping insertion into DB. PowerShell commanded failed with error: " + str(error.returncode) + 
+                ". Command: " + args)
+        _pcertlogger.log(logging.DEBUG, logmsg)
+    except FileNotFoundError as error:
+        logmsg = ("[PBSK] {-} Skipping insertion into DB. powershell.exe not found")
+        _pcertlogger.log(logging.DEBUG, logmsg)
 
     _pcertlogger.log(logging.DEBUG, "[PCERT] " + file + " Completed")

@@ -222,8 +222,8 @@ class ExtractMgr(threading.Thread):
                                 globs.UPDATEFILESDBNAME, sha256, sha1):
             logmsg = "[EXMGR] item " + filepath + " already exists in db, skipping"
             logger.log(logging.DEBUG, logmsg)
-            return False
-        return True
+            return True
+        return False
 
     @staticmethod
     def performcablisting(src, logger):
@@ -234,7 +234,7 @@ class ExtractMgr(threading.Thread):
         logmsg = "[EXMGR] Listing " + str(src) + " CAB contents"
         logger.log(logging.DEBUG, logmsg)
         try:
-            args = "expand -D \"" + str(src) + "\""
+            args = os.environ['systemdrive'] + "\\Windows\\system32\\expand.exe -D \"" + str(src) + "\""
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as pexp:
                 result, dummy = pexp.communicate()
         except subprocess.CalledProcessError as error:
@@ -254,9 +254,11 @@ class ExtractMgr(threading.Thread):
     def performcabextract(extstr, src, newdir, logger):
         '''
         Call expand.exe to extract files (if any)
+        https://support.microsoft.com/en-us/help/928636/you-cannot-extract-the-contents-of-a-microsoft-update-standalone-packa
+        https://blogs.msdn.microsoft.com/astebner/2008/03/11/knowledge-base-article-describing-how-to-extract-msu-files-and-automate-installing-them/
         '''
         result = None
-        args = "expand -R \"" + str(src) + "\" -F:" + str(extstr) + " \"" + str(newdir) + "\""
+        args = os.environ['systemdrive'] + "\\Windows\\system32\\expand -R \"" + str(src) + "\" -F:" + str(extstr) + " \"" + str(newdir) + "\""
         try:
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as pexp:
                 rawstdout, dummy = pexp.communicate()
@@ -286,7 +288,7 @@ class ExtractMgr(threading.Thread):
         result = None
         logmsg = "[EXMGR] Performing 7z on " + newpath
         logger.log(logging.DEBUG, logmsg)
-        args = "C:\\Program Files\\7-Zip\\7z.exe x -aoa -o\"" + str(newpath) + "\" -y -r \"" +str(src) + "\" *.dll *.sys *.exe"
+        args =  os.environ["programfiles"] + "\\7-Zip\\7z.exe x -aoa -o\"" + str(newpath) + "\" -y -r \"" +str(src) + "\" *.dll *.sys *.exe"
         try:
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as p7z:
                 result, dummy = p7z.communicate()
@@ -363,7 +365,7 @@ class ExtractMgr(threading.Thread):
             return hashes
 
         entryexists = False
-        if not cls.verifyentry(src, hashes[0], hashes[1], extlogger):
+        if cls.verifyentry(src, hashes[0], hashes[1], extlogger):
             entryexists = True
 
         logmsg = "[EXMGR] started on " + str(src) + " extracting files to " + str(dst)
@@ -400,8 +402,13 @@ class ExtractMgr(threading.Thread):
                 return None
 
             # make new directory to hold extracted files
+            newdir = ''
 
-            newdir = (dst + "\\" + newname).split(".cab")[0]
+            if ".cab" in newname:
+                newdir = (dst + "\\" + newname).split(".cab")[0]
+            elif ".msu" in newname:
+                newdir = (dst + "\\" + newname).split(".msu")[0]
+
             try:
                 os.mkdir(newdir)
             except FileExistsError:

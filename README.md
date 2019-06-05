@@ -46,15 +46,15 @@ Use cases:
 Display help:
 py.exe main.py
 
-Create or use current DB, extract files at <path to updates>, download symbols from Microsoft's symbol server (initially or continous use) and store them at <path to where syms are to be stored>: 
+Create or use current DB, extract files at <path to updates>, download symbols from Microsoft's symbol server (initially or continuous use) and store them at <path to where syms are to be stored>: 
 py.exe main.py -x -p "<path to updates>" -pd "<path to extract files too>" -sp "<path to where syms are to be stored>"
 Side note: The script will always attempt to re-download symbols for PE files previously not downloaded.
 
-Create or use current DB, extract files and download symbols from a specific symbol server (initially or continous use): 
+Create or use current DB, extract files and download symbols from a specific symbol server (initially or continuous use): 
 py.exe main.py -x -p "<path to updates>" -pd "<path to extract files too>" -ss "<symstore location>" -sp "<path to where syms are to be stored>"
 Side note: The script will always attempt to re-download symbols for PE files previously not downloaded.
 
-Create or use current DB, extract files and verify symbols using local symstore (initially or continous use): 
+Create or use current DB, extract files and verify symbols using local symstore (initially or continuous use): 
 py.exe main.py -x -p "<path to updates>" -pd "<path to extract files too>" -sl -ss "<directory path to symstore location or symbol location>" -sp "<path to where syms are to be stored>"
 
 Create or update current DB (requires update file, extracted files, downloaded symbols):

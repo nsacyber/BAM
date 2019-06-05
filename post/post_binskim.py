@@ -55,7 +55,7 @@ def binskimanalysis(file, sympath):
 
     strtime = str(time())
     basename = os.path.basename(file)
-    bskjson = basename + "_" + strtime + "_binskim.json"
+    bskjson = "_" + basename + "_" + strtime + "_binskim.json"
     
     args = (".\\tools\\x64\\\\binskim\\binskim.exe analyze \"" + file +
     "\" --verbose --sympath \"Cache*" + sympath + "\" -o \"" + bskjson + "\" -p -f" )
@@ -71,7 +71,7 @@ def binskimanalysis(file, sympath):
         _bsklogger.log(logging.DEBUG, logmsg)
         return
     except FileNotFoundError as error:
-        logmsg = ("[PBSK] {-} BinSkim not found")
+        logmsg = ("[PBSK] {-} BinSkim.exe not found")
         _bsklogger.log(logging.DEBUG, logmsg)
         return
     
@@ -87,57 +87,61 @@ def binskimanalysis(file, sympath):
 
     dbcursor.execute("BEGIN TRANSACTION")
 
-    with open(bskjson) as data_file:    
-        data = None
-        try:
-            data = json.load(data_file)
-        except json.decoder.JSONDecodeError as error:
-            _bsklogger.log(logging.DEBUG, ("[PBSK] JSON error: " + error.msg))
-            dbcursor.execute("END TRANSACTION")
-            dbcursor.close()
-            return
-
-        for entry in data["runs"][0]["results"]:
-            if entry["ruleId"][:3] != "BA3":
-                # ignore ELF rules
-                msg = constructSarifMsg(entry["ruleId"], 
-                entry["message"]["messageId"], 
-                entry["message"]["arguments"], data)
-                
-                try:
-                    dbcursor.execute(
-                        "INSERT INTO " + "BinSkimfiles" + " VALUES (" + "?," * 7 + "?)",
-                        # FileName, SHA256, SHA1, RuleId, Result
-                        (basename, hashes[0], hashes[1], entry["ruleId"], entry["level"],
-                        # MessageId, Message
-                        entry["message"]["messageId"], msg,
-                        # time
-                        strtime))
-                    count = count + 1
-                except sqlite3.Error as error:
-                    _bsklogger.log(logging.DEBUG, ("[PBSK] INSERT Rules error (incomplete): " + error.args[0]))
-
-        for entry in data["runs"][0]["invocations"]:
+    try:
+        with open(bskjson) as data_file:    
+            data = None
             try:
-                entry["configurationNotifications"]
-            except KeyError as dummy:
-                continue
-            
-            for ec in entry["configurationNotifications"]:
-                if ec["ruleId"][:3] != "BA3":
+                data = json.load(data_file)
+            except json.decoder.JSONDecodeError as error:
+                _bsklogger.log(logging.DEBUG, ("[PBSK] JSON error: " + error.msg))
+                dbcursor.execute("END TRANSACTION")
+                dbcursor.close()
+                return
+
+            for entry in data["runs"][0]["results"]:
+                if entry["ruleId"][:3] != "BA3":
                     # ignore ELF rules
+                    msg = constructSarifMsg(entry["ruleId"], 
+                    entry["message"]["messageId"], 
+                    entry["message"]["arguments"], data)
+                    
                     try:
                         dbcursor.execute(
-                            "INSERT INTO " + "BinSkimFiles" + " VALUES (" + "?," * 7 + "?)",
+                            "INSERT INTO " + "BinSkimfiles" + " VALUES (" + "?," * 7 + "?)",
                             # FileName, SHA256, SHA1, RuleId, Result
-                            (basename, hashes[0], hashes[1], ec["ruleId"], ec["id"],
+                            (basename, hashes[0], hashes[1], entry["ruleId"], entry["level"],
                             # MessageId, Message
-                            "", ec["message"]["text"],
+                            entry["message"]["messageId"], msg,
                             # time
                             strtime))
                         count = count + 1
                     except sqlite3.Error as error:
-                        _bsklogger.log(logging.DEBUG, ("[PBSK] INSERT ConfigurationNotifications error (incomplete): " + error.args[0]))
+                        _bsklogger.log(logging.DEBUG, ("[PBSK] INSERT Rules error (incomplete): " + error.args[0]))
+
+            for entry in data["runs"][0]["invocations"]:
+                try:
+                    entry["configurationNotifications"]
+                except KeyError as dummy:
+                    continue
+                
+                for ec in entry["configurationNotifications"]:
+                    if ec["ruleId"][:3] != "BA3":
+                        # ignore ELF rules
+                        try:
+                            dbcursor.execute(
+                                "INSERT INTO " + "BinSkimFiles" + " VALUES (" + "?," * 7 + "?)",
+                                # FileName, SHA256, SHA1, RuleId, Result
+                                (basename, hashes[0], hashes[1], ec["ruleId"], ec["id"],
+                                # MessageId, Message
+                                "", ec["message"]["text"],
+                                # time
+                                strtime))
+                            count = count + 1
+                        except sqlite3.Error as error:
+                            _bsklogger.log(logging.DEBUG, ("[PBSK] INSERT ConfigurationNotifications error (incomplete): " + error.args[0]))
+    except FileNotFoundError as error:
+        logmsg = ("[PBSK] {-} Skipping insertion into DB. " + bskjson + " not found.")
+        _bsklogger.log(logging.DEBUG, logmsg)
 
     dbcursor.execute("END TRANSACTION")
     rmfile(bskjson)
