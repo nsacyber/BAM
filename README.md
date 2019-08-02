@@ -9,7 +9,7 @@ Goal:
 
 Requirements:
 * must have the least amount of dependiciaes (portability)
-* must be able to run anywhere where python 3.6+ is installed
+* must be able to run anywhere where python 3.7+ is installed
 * must be efficient (threads over process and/or I/O or memory bound) 
 * must be compartible to new python versions
 * Back by sqlite for quick lookup of patches/PDBs and ability to 
@@ -59,21 +59,6 @@ py.exe main.py -x -p "<path to updates>" -pd "<path to extract files too>" -sl -
 
 Create or update current DB (requires update file, extracted files, downloaded symbols):
 py.exe main.py -c -p "<path to updates>" -pd "<path to extract files too>" -sl -ss "<directory path to symstore location or symbol location>" -sp "<path to where syms are to be stored>"
-
-List total number of PE files within identified updates:
-
-Verify total number of PE files within identified updates match extracted PE files
-during two cases:
-
-Populate Update table in DB only (initially or continue use):
-
-Populate Patched table in DB only (initially or continue use):
-
-Populate Symbol table in DB only (initially or continue use):
-
-
-
-
 
 
 
