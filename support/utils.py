@@ -225,13 +225,11 @@ def getpepdbfilename(unknownpefile):
                     pdbfilename = pdbfilename[:pdbfilename.index('\x00')]
                 except ValueError as dummy:
                     pass
-                return pdbfilename
     else:
         global _utilLogger
         _utilLogger.log(logging.DEBUG, "-- Pdbfilename not found....")
         pass
     return pdbfilename
-
 
 def ispe(file):
     '''
@@ -301,6 +299,10 @@ def validatecab(unknownfile):
             _utilLogger.log(logging.DEBUG, "{-} validatecab: Could not open " + str(unknownfile) + " " + \
                    str(ferror.strerror) + " (" + str(ferror.winerror) + ")")
             return False
+        except OSError as oserror:
+            _utilLogger.log(logging.DEBUG, "{-} validatezip: Issue found for " + str(unknownfile) + " " + \
+                str(oserror))
+            return None
     else:
         return False
 
@@ -308,6 +310,8 @@ def validatezip(unknownfile):
     '''
     some CABs/MSUs may exactly be ZIPs
     '''
+    global _utilLogger
+
     if unknownfile.endswith(".cab") or unknownfile.endswith(".msu"):
         try:
             with open(unknownfile, 'rb') as file:
@@ -321,10 +325,13 @@ def validatezip(unknownfile):
                 else:
                     return True
         except FileNotFoundError as ferror:
-            global _utilLogger
             _utilLogger.log(logging.DEBUG, "{-} validatezip: Could not open " + str(unknownfile) + " " + \
                    str(ferror.strerror) + " (" + str(ferror.winerror) + ")")
             return False
+        except OSError as oserror:
+            _utilLogger.log(logging.DEBUG, "{-} validatezip: Issue found for " + str(unknownfile) + " " + \
+                str(oserror))
+            return None
     else:
         return False
 
@@ -335,6 +342,7 @@ def getfilehashes(jobfile):
     '''
     from hashlib import sha256
     from hashlib import sha1
+    global _utilLogger
 
     hashes = None
 
@@ -343,9 +351,12 @@ def getfilehashes(jobfile):
             buf = item.read()
             hashes = (sha256(buf).hexdigest(), sha1(buf).hexdigest())
     except FileNotFoundError as ferror:
-        global _utilLogger
         _utilLogger.log(logging.DEBUG, "{-} getfilehashes: Could not open " + str(jobfile) + " " + \
             str(ferror.strerror) + " (" + str(ferror.winerror) + ")")
+        return None
+    except OSError as oserror:
+        _utilLogger.log(logging.DEBUG, "{-} getfilehashes: Issue found for " + str(jobfile) + " " + \
+            str(oserror))
         return None
 
     return hashes

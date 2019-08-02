@@ -213,7 +213,14 @@ class ExtractMgr(threading.Thread):
         logmsg = "[EXMGR] Verifying entry for " + src
         logger.log(logging.DEBUG, logmsg)
 
-        filepath = str(Path(src).resolve())
+        filepath = None
+
+        try:
+            filepath = str(Path(src).resolve())
+        except OSError as error:
+            logmsg = "[EXMGR] Issue getting full path for " + src + ": " + str(error) + ". Using unresolved path."
+            logger.log(logging.DEBUG, logmsg)
+            filepath = src
 
         if wsuse_db.dbentryexist(globs.DBCONN.cursor(),     \
                                 globs.UPDATEFILESDBNAME, sha256, sha1):
@@ -388,7 +395,7 @@ class ExtractMgr(threading.Thread):
         # it has PE files. Otherwise, skip to other
         # update files.
         if ispe(src):
-            logmsg = "[EXMGR] extracting PE file..."
+            logmsg = "[EXMGR] extracting PE file (" + src + ")..."
             extlogger.log(logging.DEBUG, logmsg)
 
             newdir = (dst + "\\" + newname).split(".exe")[0]
@@ -396,6 +403,11 @@ class ExtractMgr(threading.Thread):
                 os.mkdir(newdir)
             except FileExistsError:
                 pass
+            except OSError as oserror:
+                logmsg = "[EXMGR] OSError creating new directory... skipping extraction for (" + \
+                    src + "). Error: " + str(oserror)
+                extlogger.log(logging.DEBUG, logmsg)
+                return deliverables
 
             if not entryexists and cls.perform7zextract(src, newdir, extlogger) is None:
                 return deliverables
@@ -429,6 +441,11 @@ class ExtractMgr(threading.Thread):
                 os.mkdir(newdir)
             except FileExistsError:
                 pass
+            except OSError as oserror:
+                logmsg = "[EXMGR] OSError creating new directory... skipping extraction for (" + \
+                    str + "). Error: " + str(oserror)
+                extlogger.log(logging.DEBUG, logmsg)
+                return deliverables                
 
             if not entryexists:
                 # extract .dll, .exe and .sys first
