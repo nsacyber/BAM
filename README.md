@@ -43,9 +43,10 @@ Enable the **Enable Win32 long paths** policy under **Administrative Templates >
 * Python 3.7+ - <https://www.python.org/downloads/>
   * pefile - <https://github.com/erocarrera/pefile>
   * pyodbc (optional) - <https://github.com/mkleehammer/pyodbc>
-* SQLite3
-* Windows Server Update Services (WSUS)  - Add role in Windows Server 2016+ (core or GUI) <https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server-2016>
+  * SQLite3
+* 7zip - https://www.7-zip.org/
 * Windows Debugging Tools (found in Windows SDK) - <https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-download-tools>
+* Windows Server Update Services (WSUS)  - Add role in Windows Server 2016+ (core or GUI) <https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server-2016>
 * Python SQL Driver - pyodbc - <https://docs.microsoft.com/en-us/sql/connect/python/python-driver-for-sql-server?view=sql-server-2017>
 
 ## Usage
