@@ -292,7 +292,7 @@ class ExtractMgr(threading.Thread):
         result = None
         logmsg = "[EXMGR] Performing 7z on " + newpath
         logger.log(logging.DEBUG, logmsg)
-        args =  os.environ["programfiles"] + "\\7-Zip\\7z.exe x -aoa -o\"" + str(newpath) + "\" -y -r \"" +str(src) + "\" *.dll *.sys *.exe"
+        args =  os.environ["PROGRAMW6432"] + "\\7-Zip\\7z.exe x -aoa -o\"" + str(newpath) + "\" -y -r \"" +str(src) + "\" *.dll *.sys *.exe"
         try:
             with subprocess.Popen(args, shell=False, stdout=subprocess.PIPE) as p7z:
                 result, dummy = p7z.communicate()
