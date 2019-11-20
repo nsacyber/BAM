@@ -157,27 +157,19 @@ def getpesigwoage(unknownpefile):
 
                 pdb7exist = getattr(entry.entry, "CvSignature", None)
                 if pdb7exist is not None:
-                    data4 = entry.entry.Signature_Data4
-                    data4h = data4.from_bytes(
-                        data4.to_bytes(2, byteorder='big'), byteorder='little')
-                    data5 = entry.entry.Signature_Data5
-                    data5h = data5.from_bytes(
-                        data5.to_bytes(2, byteorder='big'), byteorder='little')
-                    data6 = entry.entry.Signature_Data6
-                    data6h = data6.from_bytes(
-                        data6.to_bytes(4, byteorder='big'), byteorder='little')
+                    data4 = int.from_bytes(entry.entry.Signature_Data4[0:2], byteorder="big")
+                    data5 = int.from_bytes(entry.entry.Signature_Data4[2:8], byteorder="big")
 
                     guidstr = ("{:08x}-{:04x}-{:04x}-{:04x}-" +
-                               "{:04x}{:08x}").format(
+                               "{:09x}").format(
                                    entry.entry.Signature_Data1,
                                    entry.entry.Signature_Data2,
                                    entry.entry.Signature_Data3,
-                                   data4h, data5h, data6h)
-                    guidstr = "{" + guidstr.upper() + "}"
+                                   data4,
+                                   data5)
     else:
         global _utilLogger
         _utilLogger.log(logging.DEBUG, "-- GUID not found....")
-        pass
 
     return guidstr
 
