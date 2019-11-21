@@ -159,10 +159,10 @@ def checkdirectoryexist(direxist):
             os.mkdir(direxist)
             result = True
         except FileExistsError as ferror:
-            mainlogger.log(logging.DEBUG, "[MAIN] {-} unable to make symbol destination directory " + \
+            mainlogger.log(logging.ERROR, "[MAIN] {-} unable to make symbol destination directory " + \
                     str(ferror.winerror) + " " +  str(ferror.strerror))
             pass
-    mainlogger.log(logging.DEBUG, "[MAIN] Directory ("+ direxist + ") results were " + str(int(result)))
+    mainlogger.log(logging.INFO, "[MAIN] Directory ("+ direxist + ") results were " + str(int(result)))
     return result
 
 def setuplogconfig(globqueue):
@@ -195,8 +195,9 @@ if __name__ == "__main__":
     globqueue = mp.Manager().Queue(-1)
     mainlogger = logging.getLogger("BAM.main")
     qh = logging.handlers.QueueHandler(globqueue)
+    qh.setLevel(logging.INFO)
     mainlogger.addHandler(qh)
-    mainlogger.setLevel(logging.DEBUG)
+    mainlogger.setLevel(logging.INFO)
 
     setuplogconfig(globqueue)
 
@@ -223,7 +224,7 @@ if __name__ == "__main__":
             checkdirectoryexist(ARGS.symdestpath)
 
         if not construct_tables(globs.DBCONN):
-            mainlogger.log(logging.DEBUG, "[MAIN] Problem creating DB tables")
+            mainlogger.log(logging.ERROR, "[MAIN] {-} Problem creating DB tables")
             globs.DBCONN.close()
             exit()
 
@@ -287,7 +288,7 @@ if __name__ == "__main__":
         # Only create the SymbolFiles Table
         if ARGS.getsymbols:
             if not construct_tables(globs.DBCONN):
-                mainlogger.log(logging.DEBUG, "[MAIN] Problem creating DB tables")
+                mainlogger.log(logging.ERROR, "[MAIN] {-} Problem creating DB tables")
                 globs.DBCONN.close()
                 exit()
 
@@ -321,7 +322,7 @@ if __name__ == "__main__":
         # Only create the PatchedFiles Table
         elif ARGS.getpatches:
             if not construct_tables(globs.DBCONN):
-                mainlogger.log(logging.DEBUG, "[MAIN] Problem creating DB tables")
+                mainlogger.log(logging.ERROR, "[MAIN] {-} Problem creating DB tables")
                 globs.DBCONN.close()
                 exit()
 
@@ -352,7 +353,7 @@ if __name__ == "__main__":
         # Only create the UpdateFiles Table
         elif ARGS.getupdates:
             if not construct_tables(globs.DBCONN):
-                mainlogger.log(logging.DEBUG, "[MAIN] Problem creating DB tables")
+                mainlogger.log(logging.ERROR, "[MAIN] {-} Problem creating DB tables")
                 globs.DBCONN.close()
                 exit()
 

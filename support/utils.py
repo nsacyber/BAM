@@ -193,7 +193,7 @@ def getpeage(unknownpefile):
     else:
         global _utilLogger
         _utilLogger.log(logging.DEBUG, "-- Age not found....")
-        pass
+
     return age
 
 
@@ -220,7 +220,7 @@ def getpepdbfilename(unknownpefile):
     else:
         global _utilLogger
         _utilLogger.log(logging.DEBUG, "-- Pdbfilename not found....")
-        pass
+
     return pdbfilename
 
 def ispe(file):
@@ -228,23 +228,22 @@ def ispe(file):
     checks for valid PE file
     '''
     try:
-        petemp = pefile.PE(file, fast_load=False)
+        petemp = pefile.PE(file, fast_load=True)
         petemp.close()
     except (pefile.PEFormatError, IOError):
         return False
     return True
 
 
-def ispedbgstripped(file):
+def ispedbgstripped(unknownpefile):
     '''
     checks to see if PE debug information was stripped and placed into dbg file.
     '''
-    unknownpefile = pefile.PE(file)
 
     filehdr = getattr(unknownpefile, "FILE_HEADER", None)
     if filehdr is not None:
         characteristics = getattr(unknownpefile, "Characteristics", None)
-        unknownpefile.close()
+
         if characteristics is not None:
     # https://docs.microsoft.com/en-us/windows/desktop/api/winnt/ns-winnt-_image_file_header
     # IMAGE_FILE_DEBUG_STRIPPED
@@ -253,14 +252,13 @@ def ispedbgstripped(file):
     return False
 
 
-def ispebuiltwithdebug(pebinary):
+def ispebuiltwithdebug(unknownpefile):
     '''
     check to see if PE was built with debug symbols in a pdb file
     '''
-    peitem = pefile.PE(pebinary)
 
-    debugsize = peitem.dump_dict()['Directories'][6]['Size']['Value']
-    peitem.close()
+    debugsize = unknownpefile.dump_dict()['Directories'][6]['Size']['Value']
+
     if debugsize == 0:
         return False
     return True

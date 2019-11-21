@@ -36,7 +36,7 @@ def db_logconfig(queue):
 
     qh = logging.handlers.QueueHandler(queue)
     _wdblogger.addHandler(qh)
-    _wdblogger.setLevel(logging.DEBUG)
+    _wdblogger.setLevel(logging.INFO)
 
 #***********************************************
 # Functions
@@ -171,7 +171,7 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
             "PdbDbiAge|Date:)", wholeline):
             hexi = True
     except IndexError as ierror:
-        _wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Parsing symchk output part 1: " + str(ierror) + " on " + wholeline)
+        _wdblogger.log(logging.ERROR, "[WSUS_DB] {-} Parsing symchk output part 1: " + str(ierror) + " on " + wholeline)
         return result
 
     if locate in wholeline:
@@ -185,7 +185,7 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
             if re.search(r"^\[SYMCHK\] Age:", wholeline):
                 hexi = True
         except IndexError as ierror:
-            _wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Parsing symchk output part 2: " + str(ierror) + " on " + wholeline)
+            _wdblogger.log(logging.ERROR, "[WSUS_DB] {-} Parsing symchk output part 2: " + str(ierror) + " on " + wholeline)
             return None
 
         if "CV:" in wholeline:
@@ -196,14 +196,14 @@ def parseline(locate, wholeline, offset=-1, digit=False, hexi=False):
             try:
                 result = int(result)
             except ValueError as verror:
-                _wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
+                _wdblogger.log(logging.ERROR, "[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
                         " to an int. " + str(verror))
                 pass
         elif hexi:
             try:
                 result = int(result, 16)
             except ValueError as verror:
-                _wdblogger.log(logging.DEBUG, "[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
+                _wdblogger.log(logging.ERROR, "[WSUS_DB] {-} Caught: Converting " + str(result) + " from " + str(wholeline) +
                        " to an int. " + str(verror))
                 pass
 
@@ -233,7 +233,8 @@ def writeupdate(file, sha256, sha1, \
     global _wdblogger
     basename = os.path.basename(file)
     dbcursor = conn.cursor()
-    _wdblogger.log(logging.DEBUG, "[WSUS_DB] is inserting new file and hash to updateDB")
+    logmsg = "[WSUS_DB] is inserting new file " + str(file) + " and hash (SHA1/" + sha1 + ") to updateDB"
+    _wdblogger.log(logging.DEBUG, logmsg)
 
     dbcursor.execute(
         "INSERT INTO " + dbname + " VALUES (" + "?," * 8 + "?)",
@@ -266,11 +267,10 @@ def writebinary(file, updateid, sha256, sha1, infolist,  \
     basename = os.path.basename(file)
     global _wdblogger
 
-    _wdblogger.log(logging.DEBUG, "[WSUS_DB] !! Working on ... " + str(infolist))
+    _wdblogger.log(logging.DEBUG, "[WSUS_DB] Working on ... " + str(infolist))
 
     dbcursor = conn.cursor()
 
-    _wdblogger.log(logging.DEBUG, "[WSUS_DB] inserting new file and hash")
     dbcursor.execute(
         "INSERT INTO " + dbname + " VALUES (" + "?," * 31 + "?)",
         # FileName,OperatingSystemVersion,Architecture,Signature,SHA256
@@ -293,6 +293,9 @@ def writebinary(file, updateid, sha256, sha1, infolist,  \
          infolist['Language'], infolist['PrivateBuild'],
          # SpecialBuild,BuiltwithDbgInfo,StrippedPE,UpdateId,Ignored
          infolist['SpecialBuild'], str(infolist['builtwithdbginfo']), int(infolist['strippedpe']), updateid, int(False)))
+
+    logmsg = "[WSUS_DB] Inserted new file " + str(file) + " and hash (SHA1/" + sha1 + ") to symbolDB"
+    _wdblogger.log(logging.DEBUG, logmsg)
 
     dbcursor.close()
     return True
@@ -376,7 +379,8 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha1, infolist, \
     else:
         source = symchkerr[-1]
 
-    _wdblogger.log(logging.DEBUG, "[WSUS_DB] is inserting new file and hash to symbolDB")
+    logmsg = "[WSUS_DB] Inserted new file " + str(file) + " and hash (SHA1/" + sha1 + ") to symbolDB"
+    _wdblogger.log(logging.DEBUG, logmsg)
 
     symbolobtained = int(False)
 
