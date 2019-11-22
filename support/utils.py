@@ -275,7 +275,7 @@ def validatecab(unknownfile):
             "muauth.cab" in unknownfile.lower():
         _utilLogger.log(logging.DEBUG, "{-} Ignoring " + unknownfile + "...")
         return False
-    elif unknownfile.endswith(".cab") or unknownfile.endswith(".msu"):
+    elif unknownfile.lower().endswith(".cab") or unknownfile.lower().endswith(".msu"):
         try:
             with open(unknownfile, 'rb') as file:
                 magic = file.read(4)
@@ -302,7 +302,7 @@ def validatezip(unknownfile):
     '''
     global _utilLogger
 
-    if unknownfile.endswith(".cab") or unknownfile.endswith(".msu"):
+    if unknownfile.lower().endswith(".cab") or unknownfile.lower().endswith(".msu"):
         try:
             with open(unknownfile, 'rb') as file:
                 magic = file.read(4)

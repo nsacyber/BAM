@@ -271,8 +271,8 @@ if __name__ == "__main__":
         CHECKBINMIN = ELPASED_CHECKBIN / 60
         print(("Time to check binaries ({}),").format(CHECKBINMIN))
         SYM.join()
-        ELPASED_GETSYM = time.time() - START_TIME
-        GETSYMMIN = ELPASED_GETSYM / 60
+        ELAPSED_GETSYM = time.time() - START_TIME
+        GETSYMMIN = ELAPSED_GETSYM / 60
         print(("Time to find symbols ({}),").format(GETSYMMIN))
         DB.join()
         TOTAL_ELAPSED = time.time() - START_TIME
