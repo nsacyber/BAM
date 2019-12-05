@@ -212,8 +212,12 @@ def getpepdbfilename(unknownpefile):
                 if attrpdbfilename is None:
                     return pdbfilename
 
-                pdbfilename = attrpdbfilename.decode('ascii')
+                pdbfilename = ""
                 try:
+                    pdbfilename = attrpdbfilename.decode('ascii')
+                    pdbfilename = pdbfilename[:pdbfilename.index('\x00')]
+                except UnicodeDecodeError as dummy:
+                    pdbfilename = attrpdbfilename.decode('utf-8')
                     pdbfilename = pdbfilename[:pdbfilename.index('\x00')]
                 except ValueError as dummy:
                     pass
@@ -338,8 +342,17 @@ def getfilehashes(jobfile):
 
     try:
         with open(str(jobfile), 'rb') as item:
-            buf = item.read()
-            hashes = (sha256(buf).hexdigest(), sha1(buf).hexdigest())
+            sha256hash = sha256()
+            sha1hash = sha1()
+
+            while True:
+                chunk = item.read(8192)
+                if not chunk:
+                    break
+                sha256hash.update(chunk)
+                sha1hash.update(chunk)
+
+            hashes = (sha256hash.hexdigest(), sha1hash.hexdigest())
     except FileNotFoundError as ferror:
         _utilLogger.log(logging.DEBUG, "{-} getfilehashes: Could not open " + str(jobfile) + " " + \
             str(ferror.strerror) + " (" + str(ferror.winerror) + ")")

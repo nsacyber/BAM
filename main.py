@@ -153,15 +153,18 @@ def checkdirectoryexist(direxist):
     '''
     Check if directory exists
     '''
-    result = False
+    result = True
     if not os.path.isdir(("%r"%direxist)[1:-1]):
         try:
             os.mkdir(direxist)
-            result = True
         except FileExistsError as ferror:
-            mainlogger.log(logging.ERROR, "[MAIN] {-} unable to make symbol destination directory " + \
+            mainlogger.log(logging.ERROR, "[MAIN] {-} unable to make destination directory - FileExists " + \
                     str(ferror.winerror) + " " +  str(ferror.strerror))
-            pass
+        except:
+            exctype, value = sys.exc_info()[:2]
+            mainlogger.log(logging.ERROR, ("[MAIN] {-} unable to make destination directory " + \
+                    str(exctype) + " " + str(value)))
+            result = False
     mainlogger.log(logging.INFO, "[MAIN] Directory ("+ direxist + ") results were " + str(int(result)))
     return result
 
@@ -172,6 +175,13 @@ def setuplogconfig(globqueue):
     binskim_logconfig(globqueue)
     pcert_logconfig(globqueue)
     pbanned_logconfig(globqueue)
+
+def closeup():
+    globs.DBCONN.close()
+    globs.DBCONN2.close()
+    globqueue.put_nowait(None)
+    loggerProcess.join()
+    sys.exit()
 
 if __name__ == "__main__":
 
@@ -215,23 +225,43 @@ if __name__ == "__main__":
 
         patchdest = None
 
+        direxist = False
+
         if ARGS.patchdest:
-            checkdirectoryexist(ARGS.patchdest)
+            direxist = checkdirectoryexist(ARGS.patchdest)
         
+        if not direxist:
+            mainlogger.log(logging.ERROR, "[MAIN] {-} Problem verifying patch destination directory")
+            closeup()
+
         patchdest = ARGS.patchdest.rstrip('\\')
 
         if ARGS.symdestpath:
-            checkdirectoryexist(ARGS.symdestpath)
+            direxist = checkdirectoryexist(ARGS.symdestpath)
+
+        if not direxist:
+            mainlogger.log(logging.ERROR, "[MAIN] {-} Problem verifying symbol destination directory")
+            closeup()
+
+        print("Examining " + ARGS.patchpath)
+
+        patchpathiter = ""
+        try:
+            patchpathiter = os.scandir(ARGS.patchpath)
+        except FileNotFoundError as error:
+            mainlogger.log(logging.ERROR, "[MAIN] {-} Problem verifying patch directory. Not found.")
+            closeup()
+
+        if not any(patchpathiter):
+            mainlogger.log(logging.ERROR, "[MAIN] {-} Provided patch directory is empty.")
+            closeup()            
 
         if not construct_tables(globs.DBCONN):
             mainlogger.log(logging.ERROR, "[MAIN] {-} Problem creating DB tables")
-            globs.DBCONN.close()
-            exit()
+            closeup()
 
         DB = DBMgr(patchdest, globs.DBCONN)
         SYM = PATCH = UPDATE = None
-
-        print("Examining " + ARGS.patchpath)
 
         print("Ensuring only PE files are present in " + ARGS.patchpath)
 
@@ -289,8 +319,7 @@ if __name__ == "__main__":
         if ARGS.getsymbols:
             if not construct_tables(globs.DBCONN):
                 mainlogger.log(logging.ERROR, "[MAIN] {-} Problem creating DB tables")
-                globs.DBCONN.close()
-                exit()
+                closeup()
 
             # (Re)create the Symbol table / retrieve symbols only
             DB = DBMgr(globs.DBCONN)
@@ -323,8 +352,7 @@ if __name__ == "__main__":
         elif ARGS.getpatches:
             if not construct_tables(globs.DBCONN):
                 mainlogger.log(logging.ERROR, "[MAIN] {-} Problem creating DB tables")
-                globs.DBCONN.close()
-                exit()
+                closeup()
 
             # (Re)create the PatchFile table / retrieve patches only
             DB = DBMgr(globs.DBCONN)
@@ -354,8 +382,7 @@ if __name__ == "__main__":
         elif ARGS.getupdates:
             if not construct_tables(globs.DBCONN):
                 mainlogger.log(logging.ERROR, "[MAIN] {-} Problem creating DB tables")
-                globs.DBCONN.close()
-                exit()
+                closeup()
 
             # (Re)create the UpdateFiles table / retrieve updates only
             DB = DBMgr(globs.DBCONN)
@@ -418,10 +445,7 @@ if __name__ == "__main__":
 
     print(("Time to extract ({})," +
            "Time to checkbin ({})," +
-           "Time to get symbols ({})").format(EXTRACTMIN, CHECKBINMIN-EXTRACTMIN,
-                                              GETSYMMIN-CHECKBINMIN-EXTRACTMIN))
+           "Time to get symbols ({})").format(EXTRACTMIN, CHECKBINMIN,
+                                              GETSYMMIN))
 
-    globs.DBCONN.close()
-    globs.DBCONN2.close()
-    globqueue.put_nowait(None)
-    loggerProcess.join()
+    closeup()

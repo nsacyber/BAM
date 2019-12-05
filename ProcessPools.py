@@ -460,7 +460,7 @@ class ExtractMgr(threading.Thread):
                 pass
             except OSError as oserror:
                 logmsg = "[EXMGR] OSError creating new directory... skipping extraction for (" + \
-                    str + "). Error: " + str(oserror)
+                    src + "). Error: " + str(oserror)
                 extlogger.log(logging.ERROR, logmsg)
                 return deliverables                
 

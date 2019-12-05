@@ -40,7 +40,7 @@ Enable the **Enable Win32 long paths** policy under **Administrative Templates >
 
 ### Dependencies
 
-* Python 3.7+ - <https://www.python.org/downloads/>
+* Python 3.7+ 64-bit - <https://www.python.org/downloads/>
   * pefile - <https://github.com/erocarrera/pefile>
   * pyodbc (optional) - <https://github.com/mkleehammer/pyodbc>
   * SQLite3
