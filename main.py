@@ -25,7 +25,7 @@ from support.utils import exitfunction, util_logconfig
 
 from db.wsuse_db import construct_tables, construct_post_tables, db_logconfig
 
-from ProcessPools import DBMgr, ExtractMgr, CleanMgr, SymMgr, mgr_logconfig
+from ProcessPools import DBMgr, CabMgr, PSFXMgr, PEMgr, SymMgr, mgr_logconfig
 
 from post.post_binskim import binskim_logconfig
 
@@ -283,13 +283,15 @@ if __name__ == "__main__":
         CPUS = os.cpu_count()
 
         SYM = SymMgr(CPUS, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL, globqueue)
-        PATCH = CleanMgr(CPUS, SYM, DB, globqueue)
-        UPDATE = ExtractMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue)
+        PATCH = PEMgr(CPUS, SYM, DB, globqueue)
+        PSFX = PSFXMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue, None)
+        UPDATE = CabMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue)
 
         START_TIME = time.time()
         DB.start()
         SYM.start()
         PATCH.start()
+        PSFX.start()
         UPDATE.start()
 
         UPDATE.join()
@@ -360,7 +362,7 @@ if __name__ == "__main__":
 
             print("Only retrieving patches")
 
-            CLEAN = CleanMgr(1, None, DB, globqueue)
+            CLEAN = PEMgr(1, None, DB, globqueue)
 
             DB.start()
             CLEAN.start()
@@ -390,7 +392,7 @@ if __name__ == "__main__":
 
             print("Only retrieving updates")
 
-            UPD = ExtractMgr(ARGS.patchpath, ARGS.patchdest, 4, None, DB, True, globqueue)
+            UPD = CabMgr(ARGS.patchpath, ARGS.patchdest, 4, None, DB, True, globqueue)
 
             DB.start()
             UPD.start()
