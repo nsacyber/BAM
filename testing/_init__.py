@@ -1,3 +1,13 @@
-from .testing_managers import test_managers
+"""
+Imports
+"""
 
-__all__ = [test_managers]
+import sys
+
+from . import test_CabManager
+
+sys.path.insert(0, "testing\\test_CabManager")
+
+__all__ = [
+    'test_CabManager'
+]
