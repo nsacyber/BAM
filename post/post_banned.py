@@ -23,7 +23,7 @@ from support.utils import getfilehashes, rmfile
 
 from globs import BANNEDTABLE, DBCONN2
 
-from dependencies.pefile import pefile
+import pefile
 
 _pbanlogger = logging.getLogger("BAM.post_banned")
 

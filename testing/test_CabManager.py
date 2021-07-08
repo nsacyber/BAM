@@ -9,9 +9,9 @@ from globs import DBCONN
 
 class test_CabManager(TestCase):
 
-    patchdir = "C:\\Users\\ghpham\\Desktop\\verysmalltest"
+    patchdir = "C:\\BAM testing\\expansions"
     basedir = "C:\\Windows\\System32"
-    destdir = "C:\\Users\\ghpham\\Desktop\\testout"
+    destdir = "C:\\BAM testing\\testoutput"
 
     def setUp(self) -> None:
 
@@ -33,14 +33,16 @@ class test_CabManager(TestCase):
 
     # Unit tests for individual functions
     def test_extractTaskPE(self):
-        non_psfx_patches = "C:\\Users\\ghpham\\Desktop\\verysmalltest\\windows10.0-kb4567515-x86_8f2d9133052f8aa683ab7d958bdca8471fa11fb6.msu"
+        # download regular test patch and put directory here
+        non_psfx_patches = "C:\\BAM testing\\expansions\\Windows10.0-KB5001633-x64.cab"
         result = CabMgr.extracttask(non_psfx_patches, test_CabManager.destdir)
 
         unittest.TestCase.assertIsInstance(self, result[0], tuple)
         return
 
     def test_extractTaskPSFX(self):
-        psfx_patches = "C:\\Users\\ghpham\\Desktop\\verysmalltest\\Windows10.0-KB5003169-x64_PSFX.cab"
+        # download PSFX test patch and put directory here
+        psfx_patches = "C:\\BAM testing\\PSFX test updates\\Windows10.0-KB5003169-x64_PSFX.cab"
         result = CabMgr.extracttask(psfx_patches, test_CabManager.patchdir)
         correctResult = (result[0] == "PSFX")
 

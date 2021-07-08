@@ -95,6 +95,12 @@ def parsecommandline(parser):
         type=str,
         default="extractedPatches")
     parser.add_argument(
+        "-pb", "--basepatchdir",
+        help="The directory where the base versions of files for hydration are stored",
+        type=str,
+        default="C:\\Windows\\System32"
+    )
+    parser.add_argument(
         "-raf", "--reanalyzeaf",
         action='store_true',
         help="Reanalyze all files. Requires -pa.")
@@ -284,7 +290,7 @@ if __name__ == "__main__":
 
         SYM = SymMgr(CPUS, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL, globqueue)
         PATCH = PEMgr(CPUS, SYM, DB, globqueue)
-        PSFX = PSFXMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue, None)
+        PSFX = PSFXMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue, ARGS.basepatchdir)
         UPDATE = CabMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue)
 
         START_TIME = time.time()
@@ -392,8 +398,7 @@ if __name__ == "__main__":
 
             print("Only retrieving updates")
 
-            UPD = CabMgr(ARGS.patchpath, ARGS.patchdest, 4, None, DB, True, globqueue)
-
+            UPD = CabMgr(ARGS.patchpath, ARGS.patchdest, 4, None, None, DB, True, globqueue)
             DB.start()
             UPD.start()
             UPD.join()

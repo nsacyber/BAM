@@ -39,7 +39,7 @@ from support.utils import validatecab, ispe, validatezip, \
     getfilehashes, ispebuiltwithdebug, pebinarytype, getpepdbfilename, \
     getpeage, getpearch, getpesigwoage, ispedbgstripped, rmfile
 
-from dependencies.pefile import pefile
+import pefile
 
 import MSDelta_imp
 
@@ -983,8 +983,7 @@ class SymMgr(threading.Thread):
         processed
         '''
         if jobset is not None:
-            for job in jobset:
-                self.jobs.put(job)
+            self.jobs.put(jobset)
             self.jobsready.set()
 
     def makedbrequest(self, future):

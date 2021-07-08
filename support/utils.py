@@ -14,7 +14,7 @@ import threading
 
 import logging, logging.handlers
 
-from dependencies.pefile import pefile
+import pefile
 
 import globs
 

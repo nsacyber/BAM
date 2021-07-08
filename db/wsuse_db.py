@@ -14,7 +14,7 @@ import logging, logging.handlers
 
 from pathlib import Path
 
-from dependencies.pefile import pefile
+import pefile
 
 from support.utils import pebinarytype, getfilehashes
 
