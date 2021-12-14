@@ -1,6 +1,8 @@
 # implementation of MSDelta API to handle new 
 
-from ctypes import windll, wintypes, c_size_t, pointer, Structure, Union, c_int64, cast, POINTER, c_ubyte
+from ctypes import windll, wintypes, c_size_t, pointer, Structure, Union, c_int64, cast, POINTER, c_ubyte, GetLastError
+import ctypes
+from os import error
 import zlib
 
 # structures needed for patching
@@ -64,7 +66,10 @@ def delta_patch(base, patch):
 
     base_in = Delta_Input()
     base_in.lpcstart = cast(filebuf2, wintypes.LPCVOID)
-    base_in.uSize = len(filebuf2)
+    if filebuf2:
+        base_in.uSize = len(filebuf2)
+    else:
+        base_in.uSize = 0
     base_in.Editable = False
 
     output = Delta_Output()
@@ -72,6 +77,9 @@ def delta_patch(base, patch):
     status = delta_imports.ApplyDeltaB(delta_imports.DELTA_FLAG_ALLOW_PA19, base_in, delta_in, pointer(output))
 
     # cleanup the delta buffers
+    if not status:
+        print("delta_patch failed on ", base, " and ", patch, "with error: ", ctypes.GetLastError())
+        return status, base
     return_buf = bytes((c_ubyte*output.uSize).from_address(output.lpstart))
     delta_imports.DeltaFree(output.lpstart)
 
@@ -80,27 +88,37 @@ def delta_patch(base, patch):
 def patch_binary(current, forward, reverse, output, null=None):
     # apply full patch to obtain desired binary for analysis
 
+    returnError1 = None
+    returnError2 = None
     # if applying a null differential, just do that and skip everything else
-    if not null is None:
+    if null is not None:
         status1, final = delta_patch(None, null)
         if not status1 == 1:
-            print("error in null patching", status1)
-            return
+            error1 = ctypes.GetLastError()
+            print("error in null patching: ", error1)
+            return status1, error1
     else:
         # first apply reverse to current
         status2, base = delta_patch(current, reverse)
         if not status2 == 1:
-            print("error in reverse patch application", status2)
-            return
+            error2 = ctypes.GetLastError()
+            print("error in reverse patch application: ", error2)
+            returnError1 = error2
         
         # then apply forward to base
         status3, final = delta_patch(base, forward)
         if not status3 == 1:
-            print("error in forward patch application", status3)
-            return
+            error3 = ctypes.GetLastError()
+            print("error in forward patch application: ", error3)
+            returnError2 = error3
+
+        if not (status2 == 1 or status3 == 1):
+            print("errors in applying patch: ", returnError1, "\n", returnError2)
+            return status3, returnError2
+
     
     # if all goes well, write to file and return that
     with open(output, 'wb') as file:
         file.write(final)
 
-    return output
+    return 0, None
