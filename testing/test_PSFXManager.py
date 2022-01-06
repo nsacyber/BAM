@@ -62,15 +62,18 @@ class test_PSFXManager(unittest.TestCase):
         # this is a bad test, will have to come up with better expected results later
 
     def test_findBaseFile(self):
-        file = "C:\\BAM testing\\expansions\\Windows10.0-KB5004760-x64\\test\\test2\\cab2\\amd64_adaptivecards-xamlcardrenderer_31bf3856ad364e35_10.0.19041.746_none_b8cd46df7d27c889"
+        filedir = "C:\\BAM testing\\expansions\\Windows10.0-KB5004760-x64\\test\\test2\\cab2\\amd64_desktop_shell-search-srchadmin_31bf3856ad364e35_7.0.19041.746_none_642d63be8a0f4ca4"
         basedir = "C:\\BAM testing\\FileFinderTest"
         xml = "C:\\BAM testing\\expansions\\Windows10.0-KB5004760-x64\\test\\update.mum"
+        file = "srchadmin.dll"
         version = PSFXMgr.getVersion(xml)
 
-        outfile = PSFXMgr.findBaseFile(basedir, file, version)
+        correctFile = "C:\\BAM testing\\FileFinderTest\\19041\\amd64_desktop_shell-search-srchadmin_31bf3856ad364e35_7.0.19041.746_none_642d63be8a0f4ca4\\srchadmin.dll"
+        outfile = PSFXMgr.findBaseFile(basedir, filedir, version, file)
         
 
         unittest.TestCase.assertIsNotNone(self, outfile)
+        unittest.TestCase.assertEqual(self, correctFile, outfile)
 
     def test_psfxextracttime(self):
         psfxext = 'C:\\BAM testing\\expansions\\Windows10.0-KB5000802-x64\\test\\test\\cab2\\Cab_2_for_KB5000802_PSFX.cab'

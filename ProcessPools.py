@@ -10,7 +10,6 @@ from os.path import basename
 import queue
 
 import os
-import shutil
 
 from time import time
 
@@ -22,13 +21,13 @@ import traceback as tb
 
 import logging, logging.handlers
 
-import re
+import hashlib
 
 from concurrent.futures import ProcessPoolExecutor
 
 from pathlib import Path
 
-from typing import ForwardRef, Tuple
+from typing import Tuple
 
 import globs
 
@@ -129,23 +128,24 @@ class CabMgr(threading.Thread):
                 # it from deliverables, otherwise, send to DBMgr
                 if job[0] == "PSFX":
                     if job[1] is not None:
-                        for j in job[1]:
-                            self.pemgr.addjob(j)
+                        version = job[6]
+                        for j in job[2]:
+                            self.psfxmgr.addjob((j, version))
                     for j in job[2]:
                         self.psfxmgr.addjob(j)
                 elif job[0] == "nonPSFX":
                     for j in job[1]:
                         self.pemgr.addjob(j)
-                    self.cabmgrlogger.log(logging.DEBUG, "[CABMGR] sent to pemgr: " + str(job[0][0]))
+                    self.cabmgrlogger.log(logging.INFO, "[CABMGR] sent to pemgr: " + str(job[0][0]))
                 else:
-                    self.cabmgrlogger.log(logging.DEBUG, "[CABMGR] no jobs passed to pemgr")
+                    self.cabmgrlogger.log(logging.INFO, "[CABMGR] no jobs passed to pemgr")
             else:
-                self.cabmgrlogger.log(logging.DEBUG, "[CABMGR] job did not contain patched binaries or additional updates")
+                self.cabmgrlogger.log(logging.INFO, "[CABMGR] job did not contain patched binaries or additional updates")
 
         # if there are no more nested cabs, set the jobs incoming event since there is at least 1 more job item to allow thread to
         # complete execution
         self.workremaining -= 1
-        self.cabmgrlogger.log(logging.DEBUG, "[CABMGR] work remaining: " + str(self.workremaining))
+        self.cabmgrlogger.log(logging.INFO, "[CABMGR] work remaining: " + str(self.workremaining))
         if self.workremaining == 0:
             self.jobsincoming.set()
 
@@ -189,7 +189,7 @@ class CabMgr(threading.Thread):
         global _mgrlogger
         with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, _mgrlogger)) as executor:
             while not self.jobs.empty():
-                self.cabmgrlogger.log(logging.DEBUG, "[CABMGR] assigning extraction job")
+                self.cabmgrlogger.log(logging.INFO, "[CABMGR] assigning extraction job")
                 if self.localaction:
                     future = executor.submit(self.dbupdate, self.jobs.get(), \
                                                 self.dest)
@@ -198,18 +198,23 @@ class CabMgr(threading.Thread):
                                                 self.dest)
                 future.add_done_callback(self.passresult)
                 future.add_done_callback(self.queueDbTask)
-            executor.shutdown(wait=True)
         
-        if self.pemgr is not None:
+        if self.pemgr:
             self.pemgr.cabdonesig()
-            self.cabmgrlogger.log(logging.DEBUG, "[CABMGR] done signal sent to pemgr")
-        if self.psfxmgr is not None:
+            self.cabmgrlogger.log(logging.INFO, "[CABMGR] done signal sent to pemgr")
+        else:
+            self.cabmgrlogger.log(logging.INFO, "[CABMGR] pemgr doesn't exist because working in update only mode")
+        if self.psfxmgr:
             self.psfxmgr.cabdonesig()
+            self.cabmgrlogger.log(logging.INFO, "[CABMGR] done signal sent to psfxmgr")
+        else:
+            self.cabmgrlogger.log(logging.INFO, "[CABMGR] psfxmgr doesn't exist because working in update only mode")
 
         self.dbc.donesig()
 
         end = time()
         elapsed = end-start
+        print("**********************************part 1 done*************************************")
         print("elapsed time for part 1: " + str(elapsed))
 
     @staticmethod
@@ -218,7 +223,7 @@ class CabMgr(threading.Thread):
         verify DB entry
         '''
         logmsg = "[CABMGR] Verifying entry for " + src
-        logger.log(logging.DEBUG, logmsg)
+        logger.log(logging.INFO, logmsg)
 
         filepath = None
 
@@ -243,7 +248,7 @@ class CabMgr(threading.Thread):
         '''
         result = None
         logmsg = "[CABMGR] Listing " + str(src) + " CAB contents"
-        logger.log(logging.DEBUG, logmsg)
+        logger.log(logging.INFO, logmsg)
 
         filepath = os.environ['systemdrive'] + "\\Windows\\system32\\expand.exe"
 
@@ -284,7 +289,7 @@ class CabMgr(threading.Thread):
                 rawstdout, _ = pexp.communicate()
                 result = rawstdout.decode("ascii")
             logmsg = "[CABMGR] extracted " + extstr + " at " + newdir
-            logger.log(logging.DEBUG, logmsg)
+            logger.log(logging.INFO, logmsg)
         except subprocess.CalledProcessError as error:
             logmsg = "[CABMGR] {-} extracting " + extstr + " from " + src +    \
                     " failed with " + str(error.returncode) + " " +  \
@@ -308,7 +313,7 @@ class CabMgr(threading.Thread):
         # stdout will be the std output of the 7zip subprocess
         stdout = None
         logmsg = "[CABMGR] Performing 7z on " + newpath
-        logger.log(logging.DEBUG, logmsg)
+        logger.log(logging.INFO, logmsg)
         filepath = os.environ["PROGRAMW6432"] + "\\7-Zip\\7z.exe"
         
         if not os.path.isfile(filepath):
@@ -344,7 +349,7 @@ class CabMgr(threading.Thread):
         cablogger = logging.getLogger("BAM.Pools.cabwkr")
         
         logmsg = "[CABMGR][DBUP] starting on " + str(src)
-        cablogger.log(logging.DEBUG, logmsg)
+        cablogger.log(logging.INFO, logmsg)
 
         # initialize deliverables
         deliverables = None
@@ -380,7 +385,7 @@ class CabMgr(threading.Thread):
         # is found. Revisit if needed
 
         logmsg = "[CABMGR][DBUP] Extraction (DB update only) task completed for " + src
-        cablogger.log(logging.DEBUG, logmsg)
+        cablogger.log(logging.INFO, logmsg)
 
         # Send the job to the next manager (DB will be updated eventually)
         return deliverables
@@ -404,7 +409,7 @@ class CabMgr(threading.Thread):
         # now check if src is an executable which will be extracted using 7zip
         if ispe(src):
             logmsg = "[CABMGR] extracting PE file (" + src + ")..."
-            cablogger.log(logging.DEBUG, logmsg)
+            cablogger.log(logging.INFO, logmsg)
             newname = src.split("\\")[-1].lstrip()
             newdir = (dst + "\\" + newname).split(".exe")[0]
             try:
@@ -499,10 +504,9 @@ class CabMgr(threading.Thread):
 
         DBupdateName = src.split("\\")[-1]
         if len(psfxlist) < 1:
-            return ("nonPSFX", nonpsfxlist, None, hashes[0], hashes[1], DBupdateName)
+            return ("nonPSFX", nonpsfxlist, None, hashes[0], hashes[1], DBupdateName, version)
         else:
-            return ("PSFX", nonpsfxlist, psfxlist, hashes[0], hashes[1], DBupdateName)
-
+            return ("PSFX", nonpsfxlist, psfxlist, hashes[0], hashes[1], DBupdateName, version)
 
     @classmethod
     def getPackageFormat(cls, xmlfile):
@@ -514,7 +518,6 @@ class CabMgr(threading.Thread):
                 # this will return the top level instance of version
                 return tag.attrib['PackageFormat']
         return None
-
 
     @classmethod
     def getVersion(cls, xmlfile):
@@ -558,24 +561,38 @@ class PSFXMgr(CabMgr):
     def run(self):
         start = time()
         self.cabmgrRunning.wait()
-        super().pemgr.psfxstartsig()
+        self.pemgr.psfxstartsig()
         
         global _mgrlogger
         with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, _mgrlogger)) as executor:
             while self.cabmgrRunning.is_set() or not self.jobs.empty():
-                psfxcab = self.jobs.get()
-                future = executor.submit(self.PSFXExtract, psfxcab, self.dest, self.basedir)
+                try:
+                    tuple = self.jobs.get(block=True, timeout=60)
+                except queue.Empty:
+                    # this is done because we know that we'll get instances of queue being empty
+                    # but since we may still want to wait for other items to come in while the 
+                    # previous manager is running, we need to ignore the queue being empty.
+                    # Previously we used the regular get which blocked for waiting for another 
+                    # item, but this ended up causing the thread to hang because the loop could
+                    # not check the event that said the previous manager had completed.
+                    continue
+                psfxcab = tuple[0]
+                version = tuple[1]
+                dest = "\\".join(psfxcab.split("\\")[0:-1])
+                future = executor.submit(self.PSFXExtract, psfxcab, dest, self.basedir, version)
                 future.add_done_callback(self.passresult)
-            executor.shutdown(wait=True)
+            print("[PSFXMGR]cabmgr complete, job queue empty. shutting down psfxmgr")
         
-        super().pemgr.psfxdonesig()
+        self.pemgr.psfxdonesig()
+        self.psfxmgrlogger.log(logging.INFO, "[PSFXMGR] done signal sent to pemgr")
         end = time()
-        elapsed = start-end
-        print("[PSFX] time take for psfx extract: ", elapsed)
+        elapsed = end - start
+        print("*********************PSFX extraction done**********************")
+        print("[PSFXMGR] time taken for psfx extract: ", elapsed)
         
     
     @classmethod
-    def findBaseFile(cls, basepath, filepath, version):
+    def findBaseFile(cls, basepath, filepath, version, file):
         # all paths given should be full paths
         # basepath: the directory where every version of base file can be found
         # filepath: the directory of the delta files. Should point to 
@@ -589,7 +606,9 @@ class PSFXMgr(CabMgr):
             raise FileNotFoundError("Base version ", str(version), " not found\n")
 
         if filedir in os.listdir(updatedir):
-            return os.path.join(updatedir, filedir)
+            for root, _, files in os.walk(os.path.join(updatedir, filedir)):
+                if file in files:
+                    return os.path.join(root, file)
         raise FileNotFoundError("unable to find base files " + filedir)
 
 
@@ -605,45 +624,37 @@ class PSFXMgr(CabMgr):
         for root, dirs, files in os.walk(dest):
             if "f" in dirs or "r" in dirs or "n" in dirs:
                 filesearch = root
-                # outdir = dest + "\\" + filesearch.split("\\")[-1]
-                # try:
-                #     os.mkdir(outdir)
-                # except FileExistsError:
-                #     pass
             for file in files:
                 if "\\n\\" in root or root.endswith("\\n"):
                     # change dest to place that makes sense later
                     null = root + "\\" + file
-                    # output = outdir + "\\" + file
                     output = filesearch + "\\" + file
                     status, error = MSDelta_imp.patch_binary(None, None, None, output, null)
                     if not status == 0:
                         # error handling code here
                         logmsg = "Patching failed on " + file + " with Windows Error Code: " + error
-                        psfxwkrlog.log(logging.DEBUG, logmsg)
+                        psfxwkrlog.log(logging.INFO, logmsg)
                 elif "\\r\\" in root or root.endswith("\\r"):
                     reverse = root + "\\" + file
                     forward = reverse.replace("\\r\\", "\\f\\")
-                    # output = outdir + "\\" + file
                     output = filesearch + "\\" + file
                     try:
-                        base = cls.findBaseFile(basedir, filesearch, version) + "\\" + file 
+                        base = cls.findBaseFile(basedir, filesearch, version, file)
                     except FileNotFoundError:
                         logmsg = "Patching failed on " + file + ", base file not Found"
-                        psfxwkrlog.log(logging.DEBUG, logmsg)
+                        psfxwkrlog.log(logging.INFO, logmsg)
                         continue
                     status, error = MSDelta_imp.patch_binary(base, forward, reverse, output)
                     if not status == 0:
                         # error handling code here
                         logmsg = "Patching failed on " + file + " with Windows Error Code: " + error
-                        psfxwkrlog.log(logging.DEBUG, logmsg)
+                        psfxwkrlog.log(logging.INFO, logmsg)
                 elif "\\f\\" in root or root.endswith("\\f"):
                     break
 
         # dest contains all the extracted content so just return that
         return dest
 
-    
     def cabdonesig(self):
         self.cabmgrRunning.clear()
 
@@ -653,7 +664,6 @@ class PSFXMgr(CabMgr):
     def addjob(self, psfxcab):
         # just add the cab to the queue.
         self.jobs.put(psfxcab)
-
 
     def passresult(self, future):
         pedir = future.result()
@@ -731,7 +741,7 @@ class PEMgr(threading.Thread):
                     # in the DBG file options.
                     jobitem = (str(result[0][0]), result[1], result[2])
                     self.symmgr.addjob(jobitem)
-                    self.pemgrlogger.log(logging.DEBUG, "[PEMGR] items passed to symmgr: " + str(result[0][0]))
+                    self.pemgrlogger.log(logging.INFO, "[PEMGR] items passed to symmgr: " + str(result[0][0]))
 
                 self.dbc.addtask("binary", result[0], result[1], result[2], result[3])
 
@@ -741,7 +751,7 @@ class PEMgr(threading.Thread):
         '''
         self.cabmgrRunning.wait()
         self.psfxmgrRunning.wait()
-        self.pemgrlogger.log(logging.DEBUG, "[PEMGR] PEMgr starting")
+        self.pemgrlogger.log(logging.INFO, "[PEMGR] PEMgr starting")
         start_time = time()
         if self.symmgr is not None:
             self.symmgr.pestartsig()
@@ -750,28 +760,47 @@ class PEMgr(threading.Thread):
         global _mgrlogger
         with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, _mgrlogger)) as executor:
             while not self.jobs.empty() or self.psfxmgrRunning.is_set() or self.cabmgrRunning.is_set():
-                jobdir = self.jobs.get()
+                # jobdir = self.jobs.get()
+                try:
+                    jobdir = self.jobs.get(block=True, timeout=60)
+                except queue.Empty:
+                    # this is done because we know that we'll get instances of queue being empty
+                    # but since we may still want to wait for other items to come in while the 
+                    # previous manager is running, we need to ignore the queue being empty.
+                    # Previously we used the regular get which blocked for waiting for another 
+                    # item, but this ended up causing the thread to hang because the loop could
+                    # not check the event that said the previous manager had completed.
+                    continue
                 for root, _, files in os.walk(jobdir):
                     for file in files:
                         filepath = str(Path(os.path.join(root, file)).resolve())
-                        self.pemgrlogger.log(logging.DEBUG, "[PEMGR] assigning pe job for " + str(filepath))
+                        self.pemgrlogger.log(logging.INFO, "[PEMGR] assigning pe job for " + str(filepath))
                         
                         # file naming convention in wsuscontent folder seems to be the same
                         # as whatever is at the end of update file obtained from update catalog
                         # so for our current purposes, searching via this regex is fine, but
                         # this format doesn't match with the UpdateID column in the database
                         # so correlation will have to be done in a different way?
-                        updateid = re.search("([A-Fa-f0-9]{40})", str(filepath)).group(1)
+                        # Using sha256 hash of file name for now, but need to figure something
+                        # else out eventually since we may want to be able to correlate
+                        # to the WSUS DB eventually. That would mean I have to find out how to
+                        # get the real Update ID from somewhere.
+                        bytes = str(filepath).encode('utf-8')
+                        updateid = hashlib.sha256(bytes).hexdigest()
+                        # re.search("([A-Fa-f0-9]{40})", str(filepath)).group(1)
 
                         future = executor.submit(self.petask, str(filepath), updateid)
                         future.add_done_callback(self.passresult)
+            print("[PEMGR] jobs queue empty, previous managers complete, shutting down PEMgr")
         
         self.pemgrlogger.log(logging.INFO, "[PEMGR] *************part 2 done*****************")
         print("[PEMGR] **************part 2 done**********************")
 
         if self.symmgr is not None:
             self.symmgr.pedonesig()
-            self.pemgrlogger.log(logging.DEBUG, "[PEMGR] done signal sent to symmgr")
+            self.pemgrlogger.log(logging.INFO, "[PEMGR] done signal sent to symmgr")
+        else:
+            self.pemgrlogger.log(logging.INFO, "[PEMGR] symmgr doesn't exist because working on update mode only")
         self.dbc.donesig()
 
         endtime = time()
@@ -790,7 +819,7 @@ class PEMgr(threading.Thread):
         results = None
 
         logmsg = "[PEMGR] Starting on " + str(jobfile)
-        clnlogger.log(logging.DEBUG, logmsg)
+        clnlogger.log(logging.INFO, logmsg)
 
         if ispe(jobfile):
             # check db to see if job already exists:
@@ -807,7 +836,7 @@ class PEMgr(threading.Thread):
             else:
                 pass
                 logmsg = "[PEMGR] continuing forward with " + str(jobfile)
-                clnlogger.log(logging.DEBUG, logmsg)
+                clnlogger.log(logging.INFO, logmsg)
 
             # getting to this point means item is not in db, may need to come up
             # with case where db needs to update item though
@@ -919,20 +948,20 @@ class PEMgr(threading.Thread):
             # if jobfile is not a PE, then check if it's a cab. If not a cab, remove it.
             if not validatecab(str(jobfile)):
                 logmsg = "[PEMGR] petask: Removing " + str(jobfile)
-                clnlogger.log(logging.DEBUG, logmsg)
+                clnlogger.log(logging.INFO, logmsg)
 
                 rmfile(jobfile)
 
                 logmsg = "[PEMGR] " + str(jobfile) + " removed, not PE or cab file"
-                clnlogger.log(logging.DEBUG, logmsg)
+                clnlogger.log(logging.INFO, logmsg)
             else:
                 pass
                 logmsg = "[PEMGR] " + str(jobfile) + " is nested cab, skipping"
-                clnlogger.log(logging.DEBUG, logmsg)
+                clnlogger.log(logging.INFO, logmsg)
             return results
 
         logmsg = "[PEMGR] completed one petask for " + str(jobfile)
-        clnlogger.log(logging.DEBUG, logmsg)
+        clnlogger.log(logging.INFO, logmsg)
 
         return results
 
@@ -988,7 +1017,7 @@ class SymMgr(threading.Thread):
         '''
         fexception = future.exception()
         if fexception is not None:
-            self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] {-} exception occurred: " + str(fexception) + "\ntraceback: " + \
+            self.symmgrlogger.log(logging.INFO, "[SYMMGR] {-} exception occurred: " + str(fexception) + "\ntraceback: " + \
                 tb.format_exc())
         else:
             results = future.result()
@@ -999,7 +1028,7 @@ class SymMgr(threading.Thread):
                 infolist = results[3]
                 self.dbc.addtask("symbol", jobtuple, sha256, sha1, infolist)
             else:
-                self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] no symbols found")
+                self.symmgrlogger.log(logging.INFO, "[SYMMGR] no symbols found")
 
     def run(self):
         '''
@@ -1010,14 +1039,23 @@ class SymMgr(threading.Thread):
         # setup workers and Executor
         global _mgrlogger
         with ProcessPoolExecutor(max_workers=self.poolsize, initializer=wkr_logconfig, initargs=(self.globqueue, _mgrlogger)) as executor:
-
             # take item from jobs and assign to workers
             while not self.jobs.empty() or self.peRunning.is_set():
-                self.symmgrlogger.log(logging.DEBUG, "[SYMMGR] assigning symbol job")
-                future = executor.submit(self.symtask, self.jobs.get(), self.symserver, \
+                try:
+                    job = self.jobs.get(block=True, timeout=60)
+                except queue.Empty:
+                    # this is done because we know that we'll get instances of queue being empty
+                    # but since we may still want to wait for other items to come in while the 
+                    # previous manager is running, we need to ignore the queue being empty.
+                    # Previously we used the regular get which blocked for waiting for another 
+                    # item, but this ended up causing the thread to hang because the loop could
+                    # not check the event that said the previous manager had completed.
+                    continue
+                self.symmgrlogger.log(logging.INFO, "[SYMMGR] assigning symbol job")
+                future = executor.submit(self.symtask, job, self.symserver, \
                     self.symdest, self.symlocal)
                 future.add_done_callback(self.makedbrequest)
-            # executor.shutdown(wait=True)
+            print("[SYMMGR] job queue empty and previous manager complete, shutting down SYMMgr.")
 
         self.symmgrlogger.log(logging.INFO, "[SYMMGR] *************part 3 done*****************")
         print("[SYMMGR] **************part 3 done**********************")
@@ -1040,7 +1078,7 @@ class SymMgr(threading.Thread):
 
         result = None
         logmsg = "[SYMMGR].. Getting SYM for (" + str(jobfile) + ")"
-        symlogger.log(logging.DEBUG, logmsg)
+        symlogger.log(logging.INFO, logmsg)
         servers = ""
 
         if symlocal:
@@ -1060,7 +1098,7 @@ class SymMgr(threading.Thread):
                 stderrsplit = str(pstderr.decode("ascii")).split("\r\n")
 
                 logmsg = "[SYMMGR] Attempt to obtain symbols for " + str(jobfile) + " complete"
-                symlogger.log(logging.DEBUG, logmsg)
+                symlogger.log(logging.INFO, logmsg)
 
                 infolist = {}
                 try:
@@ -1087,7 +1125,7 @@ class SymMgr(threading.Thread):
             result = None
 
         logmsg = "[SYMMGR] completed symtask for " + str(jobfile)
-        symlogger.log(logging.DEBUG, logmsg)
+        symlogger.log(logging.INFO, logmsg)
         return result
 
 
@@ -1119,7 +1157,7 @@ class DBMgr(threading.Thread):
         '''
         task = (optype, jobtuple, sha256, sha1, infolist)
         self.jobqueue.put(task)
-        self.dblogger.log(logging.DEBUG, "[DBMGR] " + optype + " task added to queue. Queue at " + \
+        self.dblogger.log(logging.INFO, "[DBMGR] " + optype + " task added to queue. Queue at " + \
                str(self.jobqueue.qsize()) + " tasks.")
         self.jobsig.set()
 
@@ -1128,7 +1166,7 @@ class DBMgr(threading.Thread):
         performs writes to DB for Update files
         should use function in wsuse_db
         '''
-        self.dblogger.log(logging.DEBUG, "[DBMGR] writing update for (" + str(file) + ")")
+        self.dblogger.log(logging.INFO, "[DBMGR] writing update for (" + str(file) + ")")
         wsuse_db.writeupdate(file, sha256, sha1, conn=self.dbconn)
 
     def writebinary(self, file, updateid, sha256, sha1, infolist):
@@ -1136,7 +1174,7 @@ class DBMgr(threading.Thread):
         performs write updates to db for Binary files
         should use function in wsuse_db
         '''
-        self.dblogger.log(logging.DEBUG, "[DBMGR] writing binary for (" + str(file) + ")")
+        self.dblogger.log(logging.INFO, "[DBMGR] writing binary for (" + str(file) + ")")
         wsuse_db.writebinary(file, updateid, sha256, sha1, infolist, conn=self.dbconn)
 
     def writesym(self, file, symchkerr, symchkout, sha256, sha1, infolist):
@@ -1144,7 +1182,7 @@ class DBMgr(threading.Thread):
         performs write updates to db for Symbol Files
         should use function in wsuse_db
         '''
-        self.dblogger.log(logging.DEBUG, "[DBMGR] writing symbol for (" + str(file) + ")")
+        self.dblogger.log(logging.INFO, "[DBMGR] writing symbol for (" + str(file) + ")")
 
         wsuse_db.writesymbol(file, symchkerr, symchkout, sha256, sha1, infolist, self.exdest, conn=self.dbconn)
 
@@ -1162,12 +1200,12 @@ class DBMgr(threading.Thread):
         '''
         handles requests from other Mgrs to write to DB
         '''
-        self.dblogger.log(logging.DEBUG, "[DBMGR] DBMgr starting")
+        self.dblogger.log(logging.INFO, "[DBMGR] DBMgr starting")
         start_time = time()
 
         while self.donecount < 3:
             if self.jobqueue.empty():
-                self.dblogger.log(logging.DEBUG, "[DBMGR] waiting for more database jobs")
+                self.dblogger.log(logging.INFO, "[DBMGR] waiting for more database jobs")
                 self.jobsig.wait()
 
             # once signal received, take tasks off queue and process
@@ -1175,7 +1213,7 @@ class DBMgr(threading.Thread):
 
                 # For every 5k queries, end transaction, commit, then restart
                 # transaction
-                self.dblogger.log(logging.DEBUG, "[DBMGR][DBUP] " + str(self.dbrecordscnt) + " records ready...")
+                self.dblogger.log(logging.INFO, "[DBMGR][DBUP] " + str(self.dbrecordscnt) + " records ready...")
 
                 if self.dbrecordscnt == 0:
                     # this case is only run once
@@ -1187,7 +1225,7 @@ class DBMgr(threading.Thread):
                     self.dbrecordscnt = 0
 
                 task = self.jobqueue.get()
-                self.dblogger.log(logging.DEBUG, "[DBMGR] assigning database job: " + str(task[0]))
+                self.dblogger.log(logging.INFO, "[DBMGR] assigning database job: " + str(task[0]))
 
                 if task[0] == "update":
                     self.dbrecordscnt += 1
@@ -1199,9 +1237,9 @@ class DBMgr(threading.Thread):
                     self.dbrecordscnt += 1
                     self.writesym(task[1][0], task[1][1], task[1][2], task[2], task[3], task[4])
                 else:
-                    self.dblogger.log(logging.DEBUG, "[DBMGR] task unrecognized")
+                    self.dblogger.log(logging.INFO, "[DBMGR] task unrecognized")
 
-                self.dblogger.log(logging.DEBUG, "[DBMGR] task done, queue at " + str(self.jobqueue.qsize()) + " tasks")
+                self.dblogger.log(logging.INFO, "[DBMGR] task done, queue at " + str(self.jobqueue.qsize()) + " tasks")
 
                 if self.jobsig.is_set():
                     self.jobsig.clear()

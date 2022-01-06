@@ -241,6 +241,22 @@ if __name__ == "__main__":
             closeup()
 
         patchdest = ARGS.patchdest.rstrip('\\')
+        if ARGS.patchpath:
+            patchpath = ARGS.patchpath
+            print("Examining " + ARGS.patchpath)
+
+            patchpathiter = ""
+            try:
+                patchpathiter = os.scandir(ARGS.patchpath)
+            except FileNotFoundError as error:
+                mainlogger.log(logging.ERROR, "[MAIN] {-} Problem verifying patch directory. Not found.")
+                closeup()
+
+            if not any(patchpathiter):
+                mainlogger.log(logging.ERROR, "[MAIN] {-} Provided patch directory is empty.")
+                closeup()
+        elif ARGS.file:
+            patchpath = ARGS.file
 
         if ARGS.symdestpath:
             direxist = checkdirectoryexist(ARGS.symdestpath)
@@ -249,27 +265,12 @@ if __name__ == "__main__":
             mainlogger.log(logging.ERROR, "[MAIN] {-} Problem verifying symbol destination directory")
             closeup()
 
-        print("Examining " + ARGS.patchpath)
-
-        patchpathiter = ""
-        try:
-            patchpathiter = os.scandir(ARGS.patchpath)
-        except FileNotFoundError as error:
-            mainlogger.log(logging.ERROR, "[MAIN] {-} Problem verifying patch directory. Not found.")
-            closeup()
-
-        if not any(patchpathiter):
-            mainlogger.log(logging.ERROR, "[MAIN] {-} Provided patch directory is empty.")
-            closeup()            
-
         if not construct_tables(globs.DBCONN):
             mainlogger.log(logging.ERROR, "[MAIN] {-} Problem creating DB tables")
             closeup()
 
         DB = DBMgr(patchdest, globs.DBCONN)
         SYM = PATCH = UPDATE = None
-
-        print("Ensuring only PE files are present in " + ARGS.patchpath)
 
         LOCAL = False
         LOCALDBC = False
@@ -290,8 +291,8 @@ if __name__ == "__main__":
 
         SYM = SymMgr(CPUS, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL, globqueue)
         PATCH = PEMgr(CPUS, SYM, DB, globqueue)
-        PSFX = PSFXMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue, ARGS.basepatchdir)
-        UPDATE = CabMgr(ARGS.patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue)
+        PSFX = PSFXMgr(patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue, ARGS.basepatchdir)
+        UPDATE = CabMgr(patchpath, patchdest, CPUS, PATCH, PSFX, DB, LOCALDBC, globqueue)
 
         START_TIME = time.time()
         DB.start()

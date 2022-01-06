@@ -1,13 +1,12 @@
 import logging
 import logging.handlers
 import multiprocessing as mp
-import sys
 import globs
 
 def log_config():
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-    h = logging.FileHandler("log.txt", "w")
+    h = logging.handlers.RotatingFileHandler("log.txt", "w")
     logger.addHandler(h)
 
 def log_listener(queue, config):
@@ -21,4 +20,4 @@ def log_listener(queue, config):
             logger.handle(item)
         except Exception as e:
             import sys
-            print("[BAMERROR] error occurred while handling item from queue: \n" + str(e), file=sys.stderr)
+            print("[LOGERROR] error occurred while handling item from queue: \n" + str(e), file=sys.stderr)

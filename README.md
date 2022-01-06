@@ -44,6 +44,7 @@ Enable the **Enable Win32 long paths** policy under **Administrative Templates >
   * pefile - <https://github.com/erocarrera/pefile>
   * pyodbc (optional) - <https://github.com/mkleehammer/pyodbc>
   * SQLite3
+  * defusedxml
 * 7zip - https://www.7-zip.org/
 * Windows Debugging Tools (found in Windows SDK) - <https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-download-tools>
 * Windows Server Update Services (WSUS)  - Add role in Windows Server 2016+ (core or GUI) <https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server-2016>
@@ -82,5 +83,11 @@ py.exe main.py -x -p "path to updates* -pd "path to extract files to" -sl -ss "d
 Create or update current DB (requires update file, extracted files, downloaded symbols):
 
 ```cmd
-py.exe main.py -c -p "path to updates" -pd "path to extract files too" -sl -ss "directory path to symstore location or symbol location" -sp "path to where syms are to be stored"
+py.exe main.py -c -p "path to updates" -pd "path to extract files to" -sl -ss "directory path to symstore location or symbol location" -sp "path to where syms are to be stored"
 ```
+
+When dealing with updadtes of Windows 10 Version 1809 and later use the '-pb' switch to specify where Windows 10 base file version are located, ie:
+```cmd
+py.exe main.py -x -p "path to updates" -pd "path to extract files to" -pb "path to base files" -sp "path to where syms are to be stored"
+```
+ideally, base files should be organized by the major version (1809, 1903, 20h2, etc.) in separate directories within the base files directory.

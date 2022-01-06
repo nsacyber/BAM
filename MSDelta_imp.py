@@ -4,6 +4,7 @@ from ctypes import windll, wintypes, c_size_t, pointer, Structure, Union, c_int6
 import ctypes
 from os import error
 import zlib
+import sys
 
 # structures needed for patching
 class Delta_Input(Structure):
@@ -43,8 +44,6 @@ def delta_patch(base, patch):
         crc = int.from_bytes(filebuf[:4], 'little')
         filecrc = zlib.crc32(file_contents)
 
-        print('crc from file: ', crc, '\ncalculated crc: ', filecrc)
-
         if not filecrc == crc:
             return -1
     
@@ -61,7 +60,7 @@ def delta_patch(base, patch):
     elif base is None:
         filebuf2 = None
     else:
-        print("error in type of base file, must be string or bytes")
+        # -2 indicates error in type of base file, must be string or bytes
         return -2
 
     base_in = Delta_Input()
@@ -78,7 +77,7 @@ def delta_patch(base, patch):
 
     # cleanup the delta buffers
     if not status:
-        print("delta_patch failed on ", base, " and ", patch, "with error: ", ctypes.GetLastError())
+        # indicates error occured on this base file
         return status, base
     return_buf = bytes((c_ubyte*output.uSize).from_address(output.lpstart))
     delta_imports.DeltaFree(output.lpstart)
@@ -88,33 +87,28 @@ def delta_patch(base, patch):
 def patch_binary(current, forward, reverse, output, null=None):
     # apply full patch to obtain desired binary for analysis
 
-    returnError1 = None
-    returnError2 = None
+    returnError = None
     # if applying a null differential, just do that and skip everything else
     if null is not None:
         status1, final = delta_patch(None, null)
         if not status1 == 1:
             error1 = ctypes.GetLastError()
-            print("error in null patching: ", error1)
             return status1, error1
     else:
         # first apply reverse to current
         status2, base = delta_patch(current, reverse)
         if not status2 == 1:
             error2 = ctypes.GetLastError()
-            print("error in reverse patch application: ", error2)
-            returnError1 = error2
+            returnError = error2
         
         # then apply forward to base
         status3, final = delta_patch(base, forward)
         if not status3 == 1:
             error3 = ctypes.GetLastError()
-            print("error in forward patch application: ", error3)
-            returnError2 = error3
+            returnError = error3
 
         if not (status2 == 1 or status3 == 1):
-            print("errors in applying patch: ", returnError1, "\n", returnError2)
-            return status3, returnError2
+            return status3, returnError
 
     
     # if all goes well, write to file and return that
