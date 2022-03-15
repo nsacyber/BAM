@@ -1,7 +1,7 @@
 import logging
 import logging.handlers
-import multiprocessing as mp
-import globs
+from pyclbr import Function
+from queue import Queue
 
 def log_config():
     logger = logging.getLogger()
@@ -9,15 +9,19 @@ def log_config():
     h = logging.handlers.RotatingFileHandler("log.txt", "w")
     logger.addHandler(h)
 
-def log_listener(queue, config):
+def log_listener(queue: Queue, config: Function):
     config()
     while True:
         try:
-            item = queue.get()
+            item = queue.get(timeout=60)
             if item is None:
                 break
             logger = logging.getLogger(item.name)
             logger.handle(item)
+        except KeyboardInterrupt:
+            logger.log(logging.INFO, "[LOGLISTENER] execution stopped by user")
+            break
         except Exception as e:
             import sys
-            print("[LOGERROR] error occurred while handling item from queue: \n" + str(e), file=sys.stderr)
+            logger.log(logging.ERROR, "[LOGERROR] error occurred while handling item from queue: \n" + str(e), file=sys.stderr)
+        

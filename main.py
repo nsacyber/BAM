@@ -5,6 +5,7 @@ main method along with argument parsing functions
 # ************************************************************
 # Imports
 # ************************************************************
+import signal
 import sys
 
 # Verify Python version
@@ -294,12 +295,27 @@ if __name__ == "__main__":
         PSFX = PSFXMgr(patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue, ARGS.basepatchdir)
         UPDATE = CabMgr(patchpath, patchdest, CPUS, PATCH, PSFX, DB, LOCALDBC, globqueue)
 
+        def keyboard_signal(signum, frame):
+            ''' we use this to gracefully terminate threads if we need to stop in the middle
+            of processing. Parameters are are dummies to be accepted from signal.signal function'''
+            mainlogger.log(logging.INFO, "[MAIN] execution stopped by user")
+            UPDATE.userinterrupt.set()
+            PSFX.userinterrupt.set()
+            PATCH.userinterrupt.set()
+            SYM.userinterrupt.set()
+            DB.userinterrupt.set()
+        
+        signal.signal(signal.SIGINT, keyboard_signal)
+
         START_TIME = time.time()
+        # try:
         DB.start()
         SYM.start()
         PATCH.start()
         PSFX.start()
         UPDATE.start()
+        # except KeyboardInterrupt:
+        #     mainlogger.log(logging.INFO, "[MAIN] execution stopped by user")
 
         UPDATE.join()
         ELPASED_EXTRACT = time.time() - START_TIME
