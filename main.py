@@ -321,6 +321,10 @@ if __name__ == "__main__":
         ELPASED_EXTRACT = time.time() - START_TIME
         EXTRACTMIN = ELPASED_EXTRACT / 60
         print(("Time to extract ({}),").format(EXTRACTMIN))
+        PSFX.join()
+        ELAPSED_PSFX = time.time() - START_TIME
+        PSFXMIN = ELAPSED_PSFX / 60
+        print(("Time to extract PSFX ({}),").format(PSFXMIN))
         PATCH.join()
         ELPASED_CHECKBIN = time.time() - START_TIME
         CHECKBINMIN = ELPASED_CHECKBIN / 60

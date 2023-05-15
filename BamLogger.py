@@ -22,6 +22,5 @@ def log_listener(queue: Queue, config: Function):
             logger.log(logging.INFO, "[LOGLISTENER] execution stopped by user")
             break
         except Exception as e:
-            import sys
-            logger.log(logging.ERROR, "[LOGERROR] error occurred while handling item from queue: \n" + str(e), file=sys.stderr)
+            logger.log(logging.ERROR, "[LOGERROR] error occurred while handling item from queue: \n" + str(e))
         
