@@ -115,12 +115,12 @@ class CabMgr(threading.Thread):
                 if job[0] == "PSFX":
                     version = int(job[6])
                     for j in job[2]:
-                        self.psfxmgr.addjob((j, version))
+                        self.psfxmgr.addjob((j, version, job[3]))
                     for j in job[1]:
-                        self.pemgr.addjob(j)
+                        self.pemgr.addjob(j, job[3])
                 elif job[0] == "nonPSFX":
                     for j in job[1]:
-                        self.pemgr.addjob(j)
+                        self.pemgr.addjob(j, job[3])
                     self.cabmgrlogger.log(logging.INFO, "[CABMGR] sent to pemgr: " + str(job[0][0]))
                 else:
                     self.cabmgrlogger.log(logging.INFO, "[CABMGR] no jobs passed to pemgr")
@@ -184,7 +184,8 @@ class CabMgr(threading.Thread):
                 else:
                     future = executor.submit(self.extracttask, self.jobs.get(), \
                                                 self.dest)
-                future.add_done_callback(self.passresult)
+                    future.add_done_callback(self.passresult)
+                
                 future.add_done_callback(self.queueDbTask)               
         
         if self.pemgr:
@@ -329,7 +330,7 @@ class CabMgr(threading.Thread):
         return stdout
 
     @classmethod
-    def dbupdate(cls, src: str, pdestdir: str):
+    def dbupdate(cls, src: str, pdestdir: str) -> Tuple | None:
         '''
         when given a directory of updates (CABs/MSUs/ZIPs)
         and no extraction, only set up update files to be added to dbc.
@@ -344,20 +345,15 @@ class CabMgr(threading.Thread):
         deliverables = None
         newpath = ''
 
-        # indicates that this cab is one of the new update version that MS started using for v1809 and forward
-        # can't handle this type of update yet, so skip it.
-        if "PSFX" in src or "psfx" in src:
-            return deliverables
-
         hashes = getfilehashes(src)
 
         if hashes is None:
-            return hashes
+            return None
 
         if not (validatecab(src) or ispe(src) or validatezip(src)):
             logmsg = "[CABMGR][DBUP] invalid cab/pe/zip"
             cablogger.log(logging.ERROR, logmsg)
-            return deliverables
+            return None
 
         newname = src.split("\\")[-1].lstrip()
         newpath = pdestdir + "\\" + newname
@@ -369,7 +365,7 @@ class CabMgr(threading.Thread):
         elif ".zip" in newname:
             newpath = newpath.split(".zip")[0]
 
-        deliverables = ((newpath, []), hashes[0], hashes[1])
+        deliverables = ("", [newpath], None, hashes[0], hashes[1], newname, 0)
         # No need to locate nested CABs/MSUs as long the parent update file
         # is found. Revisit if needed
 
@@ -380,20 +376,21 @@ class CabMgr(threading.Thread):
         return deliverables
 
     @classmethod
-    def extracttask(cls, src: str, dst: str) -> Tuple:
+    def extracttask(cls, src: str, dst: str) -> Tuple | None:
         '''task for workers to extract contents of update files and return directory of
         results to PEMgr. Also gathers metadata and hands that information off to DBMgr
         to update the database with. When encountering a PSFX style update, will instead pass the 
         update to PSFXMgr for processing, and will allow PSFXMgr to update the db rather
         than itself.'''
         cablogger = logging.getLogger("BAM.Pools.cabwkr")
+        DBupdateName = src.split("\\")[-1]
 
         # first check if information already exists in db
         hashes = getfilehashes(src)
         if hashes is None:
             raise Exception("Unable to calculate Hashes for update.")
         if cls.verifyentry(src, hashes[0], hashes[1], cablogger):
-            return (None, None)
+            return None
 
         # now check if src is an executable which will be extracted using 7zip
         if ispe(src):
@@ -419,7 +416,7 @@ class CabMgr(threading.Thread):
                     pass
                 return None
 
-            return ((str(newdir), []), hashes[0], hashes[1])
+            return ("nonPSFX", [newdir], None, hashes[0], hashes[1], DBupdateName, 0)
         # assuming that Microsoft is not devious enough to put a cab in a exe
         # proceed to extract cab/msu contents
         cabfile = src
@@ -521,7 +518,6 @@ class CabMgr(threading.Thread):
                 logmsg = "cab file not found"
                 cablogger.log(logging.ERROR, logmsg)
 
-        DBupdateName = src.split("\\")[-1]
         if len(psfxlist) < 1:
             return ("nonPSFX", nonpsfxlist, None, hashes[0], hashes[1], DBupdateName, version)
         else:
@@ -602,7 +598,9 @@ class PSFXMgr(CabMgr):
                     self.psfxmgrlogger.log(logging.INFO, "[PSFXMGR] execution stopped by user")
                     break
                 try:
-                    tuple = self.jobs.get(block=True, timeout=60)
+                    item = self.jobs.get(block=True, timeout=60)
+                    tuple = (item[0], item[1])
+                    UpdateSha = item[2]
                 except queue.Empty:
                     # this is done because we know that we'll get instances of queue being empty
                     # but since we may still want to wait for other items to come in while the 
@@ -614,7 +612,7 @@ class PSFXMgr(CabMgr):
                 psfxcab = tuple[0]
                 version = int(tuple[1])
                 dest = "\\".join(psfxcab.split("\\")[0:-1])
-                future = executor.submit(self.PSFXExtract, psfxcab, dest, self.index, version)
+                future = executor.submit(self.PSFXExtract, psfxcab, dest, self.index, version, UpdateSha)
                 future.add_done_callback(self.passresult)
                 futures.append(future)
             wait(futures)
@@ -647,7 +645,7 @@ class PSFXMgr(CabMgr):
         return "Base version " + str(version) + " not found\n"
 
     @classmethod
-    def PSFXExtract(cls, src: str, dest: str, index: dict, version: int) -> str:
+    def PSFXExtract(cls, src: str, dest: str, index: dict, version: int, UpdateSha: str) -> Tuple:
         # procesing code
         psfxwkrlog = logging.getLogger("BAM.Pools.psfxwkr")
         full_product_regex = re.compile(r"([^\s\\])+_[\da-f]{16}_\d{1,2}\.[01]\.\d{5}\.\d+_\S+_[\da-f]{16}")
@@ -752,7 +750,7 @@ class PSFXMgr(CabMgr):
                         break
 
         # dest contains all the extracted content so just return that
-        return dest
+        return (dest, UpdateSha)
 
     def cabdonesig(self):
         self.cabmgrRunning.clear()
@@ -772,8 +770,8 @@ class PSFXMgr(CabMgr):
             self.psfxmgrlogger.log(logging.ERROR, "[PSFXMGR] {-} exception occurred: " + str(fexception) + \
                 "\n\ttraceback: " + tb.format_exc())
         else:
-            pedir = future.result()
-            self.pemgr.addjob(pedir)
+            result = future.result()
+            self.pemgr.addjob(result[0], result[1])
 
 
 class PEMgr(threading.Thread):
@@ -801,13 +799,14 @@ class PEMgr(threading.Thread):
         self.pemgrlogger = logging.getLogger("BAM.Pools.PEMgr")
          # self.daemon = True
 
-    def addjob(self, pejobs: str):
+    def addjob(self, pejobs: str, updateid: str):
         '''
         receive jobs from CabMgr, add those jobs to jobs List, and set
         the  Event to indicate there are jobs waiting to be
         processed
         '''
-        self.jobs.put(pejobs)
+        item = (pejobs, updateid)
+        self.jobs.put(item)
 
     def cabstartsig(self):
         self.cabmgrRunning.set()
@@ -849,7 +848,7 @@ class PEMgr(threading.Thread):
                     # https://docs.microsoft.com/en-us/windows-hardware/drivers
                     # /debugger/symchk-command-line-options
                     # in the DBG file options.
-                    jobitem = (str(result[0][0]), result[1], result[2])
+                    jobitem = (str(result[0][0]), result[1], result[2], result[0][1])
                     self.symmgr.addjob(jobitem)
                     self.pemgrlogger.log(logging.INFO, "[PEMGR] items passed to symmgr: " + str(result[0][0]))
 
@@ -875,7 +874,9 @@ class PEMgr(threading.Thread):
                     self.pemgrlogger.log(logging.INFO, "[PEMGR] execution stopped by user")
                     break
                 try:
-                    jobdir = self.jobs.get(block=True, timeout=60)
+                    item = self.jobs.get(block=True, timeout=60)
+                    jobdir = item[0]
+                    updateid = item[1]
                 except queue.Empty:
                     # this is done because we know that we'll get instances of queue being empty
                     # but since we may still want to wait for other items to come in while the 
@@ -899,7 +900,7 @@ class PEMgr(threading.Thread):
                         # to the WSUS DB eventually. That would mean I have to find out how to
                         # get the real Update ID from somewhere.
                         bytes = str(filepath).encode('utf-8')
-                        updateid = hashlib.sha256(bytes).hexdigest()
+                        # updateid = hashlib.sha256(bytes).hexdigest()
 
                         future = executor.submit(self.petask, str(filepath), updateid)
                         future.add_done_callback(self.passresult)
@@ -938,7 +939,7 @@ class PEMgr(threading.Thread):
             hashes = getfilehashes(jobfile)
 
             if hashes is None:
-                return hashes
+                return None
 
             if wsuse_db.dbentryexistwithsymbols(globs.DBCONN.cursor(),     \
                                 globs.PATCHEDFILESDBNAME, hashes[0], hashes[1]):
@@ -1197,7 +1198,8 @@ class SymMgr(threading.Thread):
         '''
         symlogger = logging.getLogger("BAM.Pools.SymWkr")
         jobfile = jobitem[0]
-        hashes = (jobfile[1], jobfile[2])
+        PEhashes = (jobitem[1], jobitem[2])
+        UpdateSha = jobitem[3]
 
         result = None
         logmsg = "[SYMMGR].. Getting SYM for (" + str(jobfile) + ")"
@@ -1233,11 +1235,12 @@ class SymMgr(threading.Thread):
 
                 infolist['signature'] = getpesigwoage(unpefile)
                 infolist['arch'] = getpearch(unpefile)
+                infolist['UpdateSHA'] = UpdateSha
 
                 unpefile.close()
 
                 stderrsplit.append(symserver)
-                result = ((str(jobfile), stderrsplit, stdoutsplit), hashes[0], hashes[1], infolist)
+                result = ((str(jobfile), stderrsplit, stdoutsplit), PEhashes[0], PEhashes[1], infolist)
         except subprocess.CalledProcessError as error:
             logmsg = "[SYMMGR] {-} symchk failed with error: " + str(error) + ". File: " + jobfile
             symlogger.log(logging.ERROR, logmsg)

@@ -416,30 +416,46 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha1, infolist, \
             " SET Ignored = {} WHERE SHA256 = '{}' AND Signature = '{}'".format(int(ignored), sha256, infolist['signature']))
 
     dbcursor.execute(
-        "INSERT INTO " + dbname + " VALUES (" + "?," * 42 + "?)",
+        "INSERT INTO " + dbname + " VALUES (" + "?," * 43 + "?)",
         # FileName, Architecture, Signature, SHA256
-        (basename, infolist['arch'], infolist['signature'], hashes[0],
+        (basename, 
+         infolist['arch'], 
+         infolist['signature'], 
+         sha256,
          # SHA1, PublicSymbol, PrivateSymbol
-         hashes[1], int(public), int(private),
+         hashes[1], 
+         int(public),
+         int(private),
          # SymbolContains, structSize, base, imagesize, symDate
-         symcontains, symchkarr["Struct size:"], symchkarr["Base:"],
-         symchkarr["Image size:"], symchkarr["Date:"],
+         symcontains, 
+         symchkarr["Struct size:"], 
+         symchkarr["Base:"],
+         symchkarr["Image size:"], 
+         symchkarr["Date:"],
          # checksum (int), numsyms (int), symtype, modname, imagename
-         symchkarr["Checksum:"], symchkarr["NumSyms:"],
-         symchkarr["SymType:"], symchkarr["ModName:"],
+         symchkarr["Checksum:"], 
+         symchkarr["NumSyms:"],
+         symchkarr["SymType:"], 
+         symchkarr["ModName:"],
          symchkarr["ImageName:"],
          # loadedimage, pdb, CV, CVDWORD, CVData
-         symchkarr["LoadedImage:"], symchkarr["PDB:"],
-         symchkarr["CV:"], symchkarr["CV DWORD:"],
+         symchkarr["LoadedImage:"], 
+         symchkarr["PDB:"],
+         symchkarr["CV:"], 
+         symchkarr["CV DWORD:"],
          symchkarr["CV Data:"],
          # PDBSig, PDB7Sig, Age, PDBMatched, DBGMatched
-         symchkarr["PDB Sig:"], symchkarr["PDB7 Sig:"],
+         symchkarr["PDB Sig:"], 
+         symchkarr["PDB7 Sig:"],
          symchkarr["Age:"],
-         symchkarr["PDB Matched:"], symchkarr["DBG Matched:"],
+         symchkarr["PDB Matched:"], 
+         symchkarr["DBG Matched:"],
          # LineNumber, Globalsyms, TypeInfo, SymbolCheckVersionUsed,
          # DbgFileName
-         symchkarr["Line nubmers:"], symchkarr["Global syms:"],
-         symchkarr["Type Info:"], symchkarr["SymbolCheckVersion"],
+         symchkarr["Line nubmers:"], 
+         symchkarr["Global syms:"],
+         symchkarr["Type Info:"], 
+         symchkarr["SymbolCheckVersion"],
          symchkarr['DbgFilename'],
          # DbgTimeDatestamp, DbgSizeOfTime
          symchkarr['DbgTimeDateStamp'],
@@ -451,9 +467,13 @@ def writesymbol(file, symchkerr, symchkout, sha256, sha1, infolist, \
          symchkarr["PdbSignature"],
          symchkarr["PdbDbiAge"],
          # Source, Result, Ignored, IgnoredReason,
-         source, symchkarr["Result"], int(ignored), ignoredreason,
+         source, 
+         symchkarr["Result"], 
+         int(ignored), 
+         ignoredreason,
          #SymbolObtained
-         symbolobtained))
+         symbolobtained, 
+         infolist['UpdateSHA']))
 
     dbcursor.close()
     return True

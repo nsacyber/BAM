@@ -37,45 +37,102 @@ UPDATEFILESDBNAME = "UpdateFiles"
 SYMBOLFILESDBNAME = "SymbolFiles"
 PATCHEDFILESDBNAME = "PatchedFiles"
 
-PATCHEDFILETSTMT = ("CREATE TABLE IF NOT EXISTS PatchedFiles " +
-    "(FileName text, OperatingSystemVersion text, Architecture text," +
-    " Signature text, SHA256 text, SHA1 text, Age integer, " +
-    "PdbFilename text, DiskPath text, SymbolObtained integer, " +
-    "SymbolPath text, FileExtension text, Type text, " +
-    "OriginalFilename text, FileDescription text, ProductName text, " +
-    "Comments text, CompanyName text, FileVersion text, " +
-    "ProductVersion text, IsDebug integer, IsPatched integer, " +
-    "IsPreReleased integer, IsPrivate integer, " +
-    "IsSpecialBuild integer, Language text, PrivateBuild text, " +
-    "SpecialBuild text, BuiltwithDbgInfo text, StrippedPE integer," +
-    "UpdateId text, Ignored integer);")
+PATCHEDFILETSTMT = (
+    "CREATE TABLE IF NOT EXISTS PatchedFiles " +
+    "(FileName text, " + 
+    "OperatingSystemVersion text, " + 
+    "Architecture text, " +
+    "Signature text, " + 
+    "SHA256 text NOT NULL, "
+    "SHA1 text, " + 
+    "Age integer, " +
+    "PdbFilename text, " + 
+    "DiskPath text, " + 
+    "SymbolObtained integer, " +
+    "SymbolPath text, " + 
+    "FileExtension text, " + 
+    "Type text, " +
+    "OriginalFilename text, " + 
+    "FileDescription text, " + 
+    "ProductName text, " +
+    "Comments text, " + 
+    "CompanyName text, " + 
+    "FileVersion text, " +
+    "ProductVersion text, " + 
+    "IsDebug integer, " + 
+    "IsPatched integer, " +
+    "IsPreReleased integer, " + 
+    "IsPrivate integer, " +
+    "IsSpecialBuild integer, " + 
+    "Language text, " + 
+    "PrivateBuild text, " +
+    "SpecialBuild text, " + 
+    "BuiltwithDbgInfo text, " + 
+    "StrippedPE integer," +
+    "UpdateSHA text NOT NULL, " + 
+    "Ignored integer," +
+    "PRIMARY KEY(SHA256, UpdateSHA), " + 
+    "FOREIGN KEY(UpdateSHA) REFERENCES UpdateFiles(SHA256));")
 
 UPDATEFILETSTMT = ("CREATE TABLE IF NOT EXISTS UpdateFiles " +
     "(FileName text, " +
-    "SHA256 text, SHA1 text, " +
-    "Extracted integer, SymbolsObtained integer, Seceding text, " +
+    "SHA256 text NOT NULL PRIMARY KEY, " + 
+    "SHA1 text, " +
+    "Extracted integer, " + 
+    "SymbolsObtained integer, " + 
+    "Seceding text, " +
     "SecededBy text, " +
     "DiskPath text, " +
     "InsertionTime text);")
 
 SYMBOLFILETSTMT = ("CREATE TABLE IF NOT EXISTS SymbolFiles " +
-    "(FileName text, Architecture text, Signature text, " +
-    "SHA256 text, SHA1 text, " +
+    "(FileName text, " +
+    "Architecture text, " + 
+    "Signature text, " +
+    "PESHA256 text NOT NULL, " + 
+    "PESHA1 text, " +
     "PublicSymbol integer, " +
-    "PrivateSymbol integer, SymContains integer, " +
-    "structSize integer, base integer, imageSize integer, " +
-    "symDate integer, checksum integer, numsyms integer, " +
-    "symtype text, modname text, imagename text, " +
-    "loadedimage text, pdb text, CV text, CVDWORD integer, " +
-    "CVData text, PDB20Sig text, PDB70Sig text, Age integer, " +
-    "PDBMatched integer, DBGMatched integer, " +
-    "LineNumber integer, Globalsyms integer, TypeInfo integer, " +
-    "SymbolCheckVersionUsed integer, DbgFileName text, " +
-    "DbgTimeDatestamp integer, DbgSizeOfTime integer, " +
-    "DbgChecksum integer, PdbDbiAgeFullPdbFilename text, " +
-    "PdbSignature text, PdbDbiAge integer, Source text, " +
-    "Result integer, Ignored integer, IgnoredReason text, " +
-    "SymbolObtained integer);")
+    "PrivateSymbol integer, " + 
+    "SymContains integer, " +
+    "structSize integer,  " + 
+    "base integer, " + 
+    "imageSize integer, " +
+    "symDate integer, " + 
+    "checksum integer, " + 
+    "numsyms integer, " +
+    "symtype text, " + 
+    "modname text, " + 
+    "imagename text, " +
+    "loadedimage text, " + 
+    "pdb text, " + 
+    "CV text, " + 
+    "CVDWORD integer, " +
+    "CVData text, " + 
+    "PDB20Sig text, " + 
+    "PDB70Sig text, " + 
+    "Age integer, " +
+    "PDBMatched integer, " + 
+    "DBGMatched integer, " +
+    "LineNumber integer, " + 
+    "Globalsyms integer, " + 
+    "TypeInfo integer, " +
+    "SymbolCheckVersionUsed integer, " + 
+    "DbgFileName text, " +
+    "DbgTimeDatestamp integer, " + 
+    "DbgSizeOfTime integer, " +
+    "DbgChecksum integer, " + 
+    "PdbDbiAgeFullPdbFilename text, " +
+    "PdbSignature text, " + 
+    "PdbDbiAge integer, " + 
+    "Source text, " +
+    "Result integer, " + 
+    "Ignored integer, " + 
+    "IgnoredReason text, " +
+    "SymbolObtained integer, " + 
+    "UpdateSHA text NOT NULL, " +
+    "PRIMARY KEY(PESHA256, UpdateSHA), " +
+    "FOREIGN KEY(UpdateSHA) REFERENCES UpdateFiles(SHA256), " + 
+    "FOREIGN KEY(PESHA256, UpdateSHA) REFERENCES PatchedFiles(SHA256, UpdateSHA));")
 
 BINSKIMTABLE = ("CREATE TABLE IF NOT EXISTS BinSkimFiles " +
     "(FileName text, SHA256 text, SHA1 text, RuleId text," +
