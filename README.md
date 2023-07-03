@@ -2,7 +2,7 @@
 
 "You just throw it in and BAM! It works!"
 
-The Binary Analysis Metadata (BAM!) tool collects and analyzes Windows updates, binaries, and symbols.
+The Binary Analysis Metadata (BAM!) tool collects and analyzes Windows updates, binaries, and symbol files. File metadata is then compiled into a SQLite3 database file which can be easily be connected to and queried. The overall goal of BAM is to provide files and data to security researchers, analysts, and reverse engineers in a convenient repository, allowing them to cut down on the analytic overhead of collecting all the right files for themselves.
 
 ## Design
 
@@ -12,7 +12,6 @@ Develop a tool that can scan Windows updates, store information about those upda
 
 ### Requirements
 
-* Must have the least amount of dependencies (portability)
 * Must be able to run anywhere where python 3.7+ is installed
 * Must be efficient (threads over process and/or I/O or memory bound)
 * Must be compatible to new python versions
@@ -52,6 +51,9 @@ Enable the **Enable Win32 long paths** policy under **Administrative Templates >
 
 ## Usage
 
+### Setup
+
+Once the prerequisites are installed, simply run the setup.cmd script in the setup folder to allow the tool to move files into relevant folders.
 Display help
 
 ```cmd

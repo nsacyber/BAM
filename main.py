@@ -61,12 +61,12 @@ def parsecommandline(parser):
         "-c", "--createdbonly", action='store_true')
     parser.add_argument(
         "-gp", "--getpatches",
-        help="Create/Update patches DB information for symbol files " +
+        help="Create/Update patches DB information for extracted PE files " +
         "(requires --createdbonly and cannot be used with any other \"get\" option)",
         action='store_true')
     parser.add_argument(
         "-gs", "--getsymbols",
-        help="Create/Update symbol DB information for extracted PE files " +
+        help="Create/Update symbol DB information for symbol files " +
         "(requires --createdbonly and cannot be used with any other \"get\" option)",
         action='store_true')
     parser.add_argument(
@@ -148,6 +148,11 @@ def parsecommandline(parser):
         action='store_true',
         help="turn verbose output on or off"
     )
+    parser.add_argument(
+        "-rf", "--restoredir", 
+        help="Path to restoration files in case of crash during operation, should be used in lieu of -f or -p", 
+        type=str
+    )
 
     if len(sys.argv) == 1:
         displayhelp(parser)
@@ -225,11 +230,7 @@ if __name__ == "__main__":
         import ModVerbosity
 
     # ARGS.file currently not in use, way to extract single cab not yet developed
-    if ARGS.extract and (ARGS.patchpath or ARGS.file):
-        # Clean-slate (first time) / Continuous use or reconstruct DB
-        # (internet or no internet)
-        print("Extracting updates and retrieving symbols")
-
+    if ARGS.extract:
         patchdest = None
 
         direxist = False
@@ -241,24 +242,8 @@ if __name__ == "__main__":
             mainlogger.log(logging.ERROR, "[MAIN] {-} Problem verifying patch destination directory")
             closeup()
 
-        patchdest = ARGS.patchdest.rstrip('\\')
-        if ARGS.patchpath:
-            patchpath = ARGS.patchpath
-            print("Examining " + ARGS.patchpath)
-
-            patchpathiter = ""
-            try:
-                patchpathiter = os.scandir(ARGS.patchpath)
-            except FileNotFoundError as error:
-                mainlogger.log(logging.ERROR, "[MAIN] {-} Problem verifying patch directory. Not found.")
-                closeup()
-
-            if not any(patchpathiter):
-                mainlogger.log(logging.ERROR, "[MAIN] {-} Provided patch directory is empty.")
-                closeup()
-        elif ARGS.file:
-            patchpath = ARGS.file
-
+            patchdest = ARGS.patchdest.rstrip('\\')
+        
         if ARGS.symdestpath:
             direxist = checkdirectoryexist(ARGS.symdestpath)
 
@@ -285,15 +270,50 @@ if __name__ == "__main__":
             LOCALDBC = True
 
         print("Using symbol server (" + ARGS.symbolserver + ") to store at (" + \
-              ARGS.symdestpath + ")")
+            ARGS.symdestpath + ")")
 
         # number of processes spawned will be equal to the number of CPUs in the system
         CPUS = os.cpu_count()
+        
+        if (ARGS.patchpath or ARGS.file):
+            # Clean-slate (first time) / Continuous use or reconstruct DB
+            # (internet or no internet)
+            print("Extracting updates and retrieving symbols")
+            
+            if ARGS.patchpath:
+                patchpath = ARGS.patchpath
+                print("Examining " + ARGS.patchpath)
 
-        SYM = SymMgr(CPUS, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL, globqueue)
-        PATCH = PEMgr(CPUS, SYM, DB, globqueue)
-        PSFX = PSFXMgr(patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue, ARGS.basepatchdir)
-        UPDATE = CabMgr(patchpath, patchdest, CPUS, PATCH, PSFX, DB, LOCALDBC, globqueue)
+                patchpathiter = ""
+                try:
+                    patchpathiter = os.scandir(ARGS.patchpath)
+                except FileNotFoundError as error:
+                    mainlogger.log(logging.ERROR, "[MAIN] {-} Problem verifying patch directory. Not found.")
+                    closeup()
+
+                if not any(patchpathiter):
+                    mainlogger.log(logging.ERROR, "[MAIN] {-} Provided patch directory is empty.")
+                    closeup()
+            elif ARGS.file:
+                patchpath = ARGS.file
+
+            SYM = SymMgr(CPUS, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL, globqueue)
+            PATCH = PEMgr(CPUS, SYM, DB, globqueue)
+            PSFX = PSFXMgr(patchpath, patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue, ARGS.basepatchdir)
+            UPDATE = CabMgr(patchpath, patchdest, CPUS, PATCH, PSFX, DB, LOCALDBC, globqueue)
+        
+        elif (ARGS.restoredir):
+
+            # process which restore file belongs to which manager first, then give each the correct restore file.
+            restore_cab = ARGS.restoredir + "\\restore_file_cab"
+            restore_psfx = ARGS.restoredir + "\\restore_file_psfx"
+            restore_pe = ARGS.restoredir + "\\restore_file_pe"
+            restore_sym = ARGS.restoredir + "\\restore_file_sym"
+            
+            SYM = SymMgr(CPUS, ARGS.symbolserver, ARGS.symdestpath, DB, LOCAL, globqueue, restore_sym)
+            PATCH = PEMgr(CPUS, SYM, DB, globqueue, restore_pe)
+            PSFX = PSFXMgr(patchdest, CPUS, PATCH, DB, LOCALDBC, globqueue, ARGS.basepatchdir, restore_psfx)
+            UPDATE = CabMgr(patchdest, CPUS, PATCH, PSFX, DB, LOCALDBC, globqueue, restore_cab)
 
         def keyboard_signal(signum, frame):
             ''' we use this to gracefully terminate threads if we need to stop in the middle
@@ -308,14 +328,11 @@ if __name__ == "__main__":
         signal.signal(signal.SIGINT, keyboard_signal)
 
         START_TIME = time.time()
-        # try:
         DB.start()
         SYM.start()
         PATCH.start()
         PSFX.start()
         UPDATE.start()
-        # except KeyboardInterrupt:
-        #     mainlogger.log(logging.INFO, "[MAIN] execution stopped by user")
 
         UPDATE.join()
         ELPASED_EXTRACT = time.time() - START_TIME

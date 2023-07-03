@@ -157,8 +157,13 @@ def getpesigwoage(unknownpefile):
 
                 pdb7exist = getattr(entry.entry, "CvSignature", None)
                 if pdb7exist is not None:
-                    data4 = int.from_bytes(entry.entry.Signature_Data4[0:2], byteorder="big")
-                    data5 = int.from_bytes(entry.entry.Signature_Data4[2:8], byteorder="big")
+                    try:
+                        data4 = int.from_bytes(entry.entry.Signature_Data4[0:2], byteorder="big")
+                        data5 = int.from_bytes(entry.entry.Signature_Data4[2:8], byteorder="big")
+                    except TypeError:
+                        # issue occurred when Signature_Data4 was interpreted as integer rather than byte array. Potentially due to changes within pefile itself?
+                        data4 = entry.entry.Signature_Data4
+                        data5 = entry.entry.Signature_Data5
 
                     guidstr = ("{:08x}-{:04x}-{:04x}-{:04x}-" +
                                "{:09x}").format(
