@@ -18,17 +18,12 @@ Develop a tool that can scan Windows updates, store information about those upda
 * Backed by SQLite for quick lookup of patches and symbols
 * Microsoft's symsrv.dll and symsrv.yes MUST be placed in \Windows\System32\ by an administrator due to symchk.exe's functionality
 * Must enable the "Enable Win32 long paths" group policy under "Administrative Templates\System\FileSystem" beginning with Windows 10 1607 (Anniversary Update)
-* Must add location of Microsoft Debugging tools to PATH environment variable
 
 ## Runtime Requirements
 
 ### Microsoft's Symbol Connection and Download EULA
 
 symchk.exe will prompt the user to accept an Microsoft EULA when a symbol is going to be download from Microsoft's server. The symsrv.yes file (i.e., the YES file) is part of the Windows SDK installation in \Debugger\<arch>\ and is used to silently accept the Microsoft EULA to download the symbols from their servers. You can remove this file to individually accept/denied the EULA.
-
-### Group Policy
-
-Enable the **Enable Win32 long paths** policy under **Administrative Templates > System > FileSystem**. Due to the nature of how Windows updates are structured and named, they are given very long names when decompressed. BAM! will not run unless this group policy is enabled. Additionally, to avoid other long name errors during extraction and until the issue is resolved in the program, extract update contents to a single character named directory.
 
 ### Hardware
 
@@ -53,7 +48,11 @@ Enable the **Enable Win32 long paths** policy under **Administrative Templates >
 
 ### Setup
 
-Once the prerequisites are installed, simply run the setup.cmd script in the setup folder to allow the tool to move files into relevant folders.
+Run the setup.ps1 script in the setup folder to obtain any missing prerequisites and to allow the tool to move files into relevant folders. Since installing prerequisites requires admin permissions, the user will need to run the setup.ps1 script with admin permissions as well. The script does not attempt to install the WSUS server role, so users will still have to install the WSUS server role manually.
+
+### Workflow
+The general idea for the workflow for BAM is for BAM to run every Patch Tuesday to collect, document, and analyze new updates. BAM can be run for small, one-off updates or files to fill a hole in the database, but the primary workflow is meant to ingest large amounts of data at once. Once the database has been either populated or updated, users can query the datdabase at their leisure for whatever updates, binaries, or symbol files they wish to analyze.
+
 Display help
 
 ```cmd
