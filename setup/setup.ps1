@@ -162,5 +162,7 @@ if ($seven_zip -eq $false)
     Start-Process -FilePath .\7z2301-x64.exe -ArgumentList "/S /D=`"C:\Program Files\7-Zip`"" -Wait
 }
 
-# install WSUS?
+# install WSUS and minimally configure
+New-Item -Path C:\Wsus_Updates -ItemType Directory
 Install-WindowsFeature -Name UpdateServices -LogPath ".\WSUS_install_log.txt"
+Start-Process -FilePath 'C:\Program Files\Update Services\Tools\wsusutil.exe' -ArgumentList "postinstall CONTENT_DIR=C:\Wsus_Updates"

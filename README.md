@@ -48,7 +48,7 @@ symchk.exe will prompt the user to accept an Microsoft EULA when a symbol is goi
 
 ### Setup
 
-Run the setup.ps1 script in the setup folder to obtain any missing prerequisites and to allow the tool to move files into relevant folders. Since installing prerequisites requires admin permissions, the user will need to run the setup.ps1 script with admin permissions as well. The script does not attempt to install the WSUS server role, so users will still have to install the WSUS server role manually.
+Run the setup.ps1 script in the setup folder to obtain any missing prerequisites and to allow the tool to move files into relevant folders. Since installing prerequisites requires admin permissions, the user will need to run the setup.ps1 script with admin permissions as well. The script attempts to minimally install the WSUS server role, so users will need to perfrom additional post install configuration tasks after in order to obtain the desired updates.
 
 ### Workflow
 The general idea for the workflow for BAM is for BAM to run every Patch Tuesday to collect, document, and analyze new updates. BAM can be run for small, one-off updates or files to fill a hole in the database, but the primary workflow is meant to ingest large amounts of data at once. Once the database has been either populated or updated, users can query the datdabase at their leisure for whatever updates, binaries, or symbol files they wish to analyze.
