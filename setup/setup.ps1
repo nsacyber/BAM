@@ -76,6 +76,8 @@ Copy-Item -Path "$dbtoolsPath\symchk.exe" -Destination '..\tools\x64'
 Copy-Item -Path "$dbtoolsPath\SymbolCheck.dll" -Destination '..\tools\x64'
 Copy-Item -Path "$dbtoolsPath\symsrv.dll" -Destination '..\tools\x64'
 Copy-Item -Path "$dbtoolsPath\symsrv.yes" -Destination '..\tools\x64'
+Copy-Item -Path "$dbtoolsPath\dbghelp.dll" -Destination '..\tools\x64'
+
 
 # check for python version >= 3.7
 $pythonPathCheck = (Test-Path -Path 'HKLM:\SOFTWARE\Python\PythonCore')
